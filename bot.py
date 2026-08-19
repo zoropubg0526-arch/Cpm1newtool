@@ -1819,7 +1819,7 @@ def subscription_required(message):
     btn1 = types.InlineKeyboardButton("📢 Subscribe to Channel", url=CHANNEL_LINK)
     btn2 = types.InlineKeyboardButton("🔄 Check Subscription", callback_data="check_sub")
     markup.add(btn1, btn2)
-    bot.send_message(chat_id, "❌ **You must subscribe to the channel first!**\n\n📢 **Channel:** [Harekat 2mood](https://t.me/harekatmod)", reply_markup=markup, parse_mode='Markdown')
+    bot.send_message(chat_id, "❌ **You must subscribe to the channel first!**\n\n📢 **Channel:** [markmwehehe](https://t.me/markmwhehe)", reply_markup=markup, parse_mode='Markdown')
 
 def refresh_account_data(chat_id):
     """Force refresh account data for a user"""
