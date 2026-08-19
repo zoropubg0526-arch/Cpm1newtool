@@ -1696,7 +1696,7 @@ def format_account_info(info: Dict[str, Any]) -> str:
 def get_text(chat_id, key, **kwargs):
     # All English text only
     texts = {
-        "welcome": "☠️ **MARKMWEHEHETOOL BOT** ☠️\n🔥 **HACKER TOOL** 🔥\n━━━━━━━━━━━━━━━━━━━━━\n🔐 Welcome!\n📌 Choose activation method:\n━━━━━━━━━━━━━━━━━━━━━\n🔑 Normal Key\n⏰ Time Key\n🎁 Free Trial (10 min)\n━━━━━━━━━━━━━━━━━━━━━\n👤 @QQlQHQ",
+        "welcome": "☠️ **MARKMWEHEHETOOL BOT** ☠️\n🔥 **HACKER TOOL** 🔥\n━━━━━━━━━━━━━━━━━━━━━\n🔐 Welcome!\n📌 Choose activation method:\n━━━━━━━━━━━━━━━━━━━━━\n🔑 Normal Key\n⏰ Time Key\n🎁 Free Trial (10 min)\n━━━━━━━━━━━━━━━━━━━━━\n👤 @Maarkryan",
         "cpm1_section": "☠️☠️☠️ **MARKMWEHEHETOOL CPM1** ☠️☠️☠️\n━━━━━━━━━━━━━━━━━━━━━\n📱 **Activation Menu**",
         "cpm2_section": "☠️☠️☠️ **MARKMWEHEHETOOL CPM2** ☠️☠️☠️\n━━━━━━━━━━━━━━━━━━━━━\n🎮 **Activation Menu**",
         "back": "🔙 Back",
