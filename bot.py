@@ -85,43 +85,23 @@ DB_URL = "https://cpm2bpt-default-rtdb.europe-west1.firebasedatabase.app"
 
 GROUP_LOG_ID = -1004441134033  # Group for payment logs
 
-# Subscription durations in hours
 SUBSCRIPTION_DURATIONS = {
-    "1_day": 24,
-    "5_days": 120,
-    "1_week": 168,
-    "3_weeks": 504,
-    "5_weeks": 840,
-    "7_weeks": 1176,
-    "12_weeks": 2016,
-    "14_weeks": 2352,
+    "1_day": 24, "5_days": 120, "1_week": 168, "3_weeks": 504,
+    "5_weeks": 840, "7_weeks": 1176, "12_weeks": 2016, "14_weeks": 2352,
 }
 
-# Subscription prices (Stars) - for Telegram Stars payment
 SUBSCRIPTION_STARS = {
-    "1_day": 30,
-    "5_days": 130,
-    "1_week": 200,
-    "3_weeks": 250,
-    "5_weeks": 300,
-    "7_weeks": 330,
-    "12_weeks": 1050,
-    "14_weeks": 1250,
+    "1_day": 30, "5_days": 130, "1_week": 200, "3_weeks": 250,
+    "5_weeks": 300, "7_weeks": 330, "12_weeks": 1050, "14_weeks": 1250,
 }
 
-# Subscription prices (Money) - for manual payment
 SUBSCRIPTION_MONEY = {
-    "1_day": "30 Pesos | $1",
-    "5_days": "130 Pesos | $3",
-    "1_week": "200 Pesos | $4",
-    "3_weeks": "250 Pesos | $5",
-    "5_weeks": "300 Pesos | $6",
-    "7_weeks": "330 Pesos | $7",
-    "12_weeks": "1,050 Pesos | $13",
-    "14_weeks": "1,250 Pesos | $17",
+    "1_day": "30 Pesos | $1", "5_days": "130 Pesos | $3",
+    "1_week": "200 Pesos | $4", "3_weeks": "250 Pesos | $5",
+    "5_weeks": "300 Pesos | $6", "7_weeks": "330 Pesos | $7",
+    "12_weeks": "1,050 Pesos | $13", "14_weeks": "1,250 Pesos | $17",
 }
 
-# Payment methods for manual
 PAYMENT_METHODS = {
     "paypal": {
         "label": "💳 PayPal",
@@ -137,7 +117,6 @@ PAYMENT_METHODS = {
     }
 }
 
-# Store pending manual subscription requests
 PENDING_SUBSCRIPTIONS = {}
 
 # ═══════════════════════════════════════════════════════════
@@ -315,7 +294,7 @@ FREE_TRIAL_USERS = {}
 USER_SUBSCRIPTIONS = {}
 
 # ═══════════════════════════════════════════════════════════
-# ENCRYPTION / DECRYPTION FUNCTIONS
+# ENCRYPTION / DECRYPTION FUNCTIONS (from cpm_nuker.py)
 # ═══════════════════════════════════════════════════════════
 
 def make_xor_key(uid: str) -> bytes:
