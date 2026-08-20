@@ -2115,6 +2115,10 @@ def get_text(chat_id, key, **kwargs):
         "subscription_paypal": "💳 **PAYPAL PAYMENT**\n━━━━━━━━━━━━━━━━━━━━━\n📧 **Email:** `markryanmanoguid867@gmail.com`\n\n📌 Please make sure you screenshot the payment cause the bot will request for the screenshot.\n\n📤 **Send your payment screenshot now:**",
         "subscription_paymaya": "📱 **PAYMAYA PAYMENT**\n━━━━━━━━━━━━━━━━━━━━━\n📱 **Number:** `09281630511`\n👤 **Name:** MARK RYAN MANOGUID\n\n📌 Please make sure you screenshot the payment cause the bot will request for the screenshot.\n\n📤 **Send your payment screenshot now:**",
         "subscription_gcash_to_paymaya": "🔄 **GCASH TO PAYMAYA**\n━━━━━━━━━━━━━━━━━━━━━\n📌 DM @Maarkryan SO Maarkryan can send you the QR CODE bro thanks ❤‍🔥❤‍🔥\n\n📌 Please make sure you screenshot the payment cause the bot will request for the screenshot.\n\n📤 **Send your payment screenshot now:**",
+        "subscription_stars_info": "🌟 **TELEGRAM STARS PAYMENT**\n━━━━━━━━━━━━━━━━━━━━━\n⭐ **Amount:** {stars} ⭐\n\n📌 Click the button below to pay with Telegram Stars.\n📌 After payment, your subscription will be **activated AUTOMATICALLY** — no need to wait!",
+        "subscription_stars_pay_btn": "⭐ Pay {stars} Stars",
+        "subscription_stars_paid": "✅ **PAYMENT RECEIVED!**\n━━━━━━━━━━━━━━━━━━━━━\n⭐ **Stars:** {stars} ⭐\n⏱️ **Duration:** {duration}\n📅 **Expires:** {expires}\n\n🎉 Your subscription is now **AUTOMATICALLY ACTIVATED**!\n✅ You can now use all bot features!",
+        "subscription_auto_activated": "✅ **SUBSCRIPTION ACTIVATED!**\n━━━━━━━━━━━━━━━━━━━━━\n⏱️ **Duration:** {duration}\n📅 **Expires:** {expires}\n\n🎉 Enjoy your subscription! An admin will verify your payment in the group log.\n✅ You can now use all bot features!",
         "subscription_photo_received": "📸 **Payment screenshot received!**\n⏳ Please wait for admin verification.\n\n📌 You will be notified once confirmed.",
         "subscription_confirm_message": "✅ **SUBSCRIPTION CONFIRMED!**\n━━━━━━━━━━━━━━━━━━━━━\n🎉 Your subscription is now active!\n⏱️ Duration: {duration}\n📅 Expires: {expires}\n\n✅ You can now use the bot features!",
         "subscription_decline_message": "❌ **SUBSCRIPTION DECLINED**\n━━━━━━━━━━━━━━━━━━━━━\n⚠️ Your payment could not be verified.\n📌 Please contact @Maarkryan for assistance.",
@@ -2250,10 +2254,11 @@ def create_payment_method_keyboard():
     btn1 = types.InlineKeyboardButton("💳 PayPal", callback_data="sub_payment_paypal")
     btn2 = types.InlineKeyboardButton("📱 PayMaya", callback_data="sub_payment_paymaya")
     btn3 = types.InlineKeyboardButton("🔄 GCash to PayMaya", callback_data="sub_payment_gcash_to_paymaya")
-    btn4 = types.InlineKeyboardButton("🔙 Back", callback_data="subscription_menu")
+    btn4 = types.InlineKeyboardButton("🌟 Telegram Stars", callback_data="sub_payment_stars")
+    btn5 = types.InlineKeyboardButton("🔙 Back", callback_data="subscription_menu")
     markup.row(btn1, btn2)
-    markup.row(btn3)
-    markup.row(btn4)
+    markup.row(btn3, btn4)
+    markup.row(btn5)
     return markup
 
 def create_subscription_confirm_keyboard(user_id, duration, payment_method):
@@ -2262,6 +2267,17 @@ def create_subscription_confirm_keyboard(user_id, duration, payment_method):
     btn2 = types.InlineKeyboardButton("❌ Decline", callback_data=f"sub_decline_{user_id}_{duration}_{payment_method}")
     markup.row(btn1, btn2)
     return markup
+
+def create_subscription_stars_log_keyboard():
+    """Record-only keyboard shown on Stars group log posts (no confirm/decline needed)."""
+    markup = types.InlineKeyboardMarkup(row_width=1)
+    btn1 = types.InlineKeyboardButton("✅ Automatically activated — record only", callback_data="stars_record_only")
+    markup.row(btn1)
+    return markup
+
+@bot.callback_query_handler(func=lambda call: call.data == "stars_record_only")
+def stars_record_only_callback(call):
+    bot.answer_callback_query(call.id, "🌟 Stars payments activate automatically. No confirm/decline needed.", show_alert=True)
 
 def create_subscription_renew_keyboard():
     markup = types.InlineKeyboardMarkup(row_width=1)
@@ -2486,6 +2502,47 @@ def menu_command(message):
         return
     bot.send_message(chat_id, "☠️☠️☠️ **MARKMWEHEHETOOL BOT** ☠️☠️☠️\n🔥 **HACKER TOOL** 🔥\n━━━━━━━━━━━━━━━━━━━━━\n📱 **CPM1** - Advanced CPM1 activations\n🎮 **CPM2** - King Rank & Account Generation\n━━━━━━━━━━━━━━━━━━━━━\n💡 Choose the appropriate section below:", reply_markup=create_main_keyboard(chat_id), parse_mode='Markdown')
 
+@bot.message_handler(commands=['cancel', 'back'])
+def cancel_command(message):
+    """Exit any waiting state (payment screenshot, form inputs, etc.)."""
+    chat_id = message.chat.id
+    if chat_id in user_states:
+        del user_states[chat_id]
+    bot.send_message(chat_id, "❌ **Cancelled.** Type /start to go back to the main menu.", parse_mode='Markdown')
+
+@bot.message_handler(commands=['stars'])
+def stars_balance_command(message):
+    """Admin-only: view the bot's total received Stars (withdrawable at 1,000+ via Fragment)."""
+    chat_id = message.chat.id
+    if not is_admin(chat_id):
+        bot.send_message(chat_id, get_text(chat_id, "not_admin"), parse_mode='Markdown')
+        return
+    data = _load_stars_balance()
+    total = data.get("total_stars", 0)
+    can_withdraw = total >= 1000
+    text = (
+        f"🌟 **BOT STARS BALANCE**\n"
+        f"━━━━━━━━━━━━━━━━━━━━━\n"
+        f"💰 **Total Stars Received:** {total:,} \u2b50\n\n"
+    )
+    if can_withdraw:
+        text += f"✅ **You can NOW WITHDRAW!** (1,000+ Stars)\n"
+        text += f"📌 Go to https://fragment.com/stars (log in with the bot's phone/account) and request withdrawal.\n\n"
+    else:
+        text += f"⏳ Need **1,000 Stars** to withdraw. {1000 - total:,} Stars to go.\n\n"
+    recent = data.get("history", [])[-5:][::-1]
+    if recent:
+        text += f"📝 **Last 5 payments:**\n"
+        for p in recent:
+            text += (
+                f"• @{p.get('username','?')} — {p.get('stars',0):,} \u2b50 ({p.get('duration','?').replace('_',' ').title()}) "
+                f"[{p.get('payment_type','?')}]\n"
+            )
+    else:
+        text += "📝 No Stars payments yet.\n"
+    text += "━━━━━━━━━━━━━━━━━━━━━"
+    bot.send_message(chat_id, text, parse_mode='Markdown')
+
 @bot.message_handler(commands=['admin'])
 def admin_command(message):
     chat_id = message.chat.id
@@ -2513,6 +2570,106 @@ def admin_command(message):
 # ═══════════════════════════════════════════════════════════
 # 🎯 CALLBACK HANDLER
 # ═══════════════════════════════════════════════════════════
+
+# ═══════════════════════════════════════════════════════════
+# 🌟 STARS BALANCE TRACKING (bot's received Stars)
+# ═══════════════════════════════════════════════════════════
+
+STARS_BALANCE_FILE = "stars_balance.json"
+
+def _load_stars_balance():
+    """Load the bot's total received Stars balance from local file."""
+    try:
+        if os.path.exists(STARS_BALANCE_FILE):
+            with open(STARS_BALANCE_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except Exception as e:
+        print(f"⚠️ Failed to load stars balance: {e}")
+    return {"total_stars": 0, "history": []}
+
+def _save_stars_balance(data):
+    try:
+        with open(STARS_BALANCE_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+    except Exception as e:
+        print(f"⚠️ Failed to save stars balance: {e}")
+
+def _add_stars_balance(user_id, username, first_name, stars, duration_key, payment_type="direct"):
+    """Add received Stars to the bot's balance and persist it."""
+    data = _load_stars_balance()
+    data["total_stars"] = data.get("total_stars", 0) + stars
+    data["history"].append({
+        "user_id": user_id,
+        "username": username,
+        "first_name": first_name,
+        "stars": stars,
+        "duration": duration_key,
+        "payment_type": payment_type,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    })
+    if len(data["history"]) > 500:
+        data["history"] = data["history"][-500:]
+    _save_stars_balance(data)
+    # Mirror to Firebase cloud
+    try:
+        db_put("bot/stars_balance", data)
+    except Exception:
+        pass
+    return data["total_stars"]
+
+def _activate_subscription(user_id, duration_hours, duration_key, first_name, username, payment_type="subscription"):
+    """Shared subscription activation logic (used by Stars + money payments).
+
+    Returns the time_key of the activated subscription.
+    """
+    time_key = create_time_key(duration_hours, user_id)
+    if time_key in TIME_KEYS:
+        TIME_KEYS[time_key]["used"] = True
+        TIME_KEYS[time_key]["user_id"] = user_id
+    USER_SUBSCRIPTIONS[user_id] = {
+        "expires": TIME_KEYS[time_key]["expires"],
+        "duration": duration_hours,
+        "key": time_key
+    }
+    if time_key not in KEY_USAGE:
+        KEY_USAGE[time_key] = []
+        KEY_USERS_DETAILS[time_key] = {}
+    if user_id not in KEY_USAGE[time_key]:
+        KEY_USAGE[time_key].append(user_id)
+        KEY_USAGE_COUNT[time_key] = len(KEY_USAGE[time_key])
+    KEY_USERS_DETAILS[time_key][user_id] = {
+        "username": username,
+        "first_name": first_name,
+        "used_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "type": payment_type
+    }
+    if user_id not in user_sessions:
+        user_sessions[user_id] = {}
+    user_sessions[user_id]['logged_in'] = True
+    user_sessions[user_id]['is_time_key'] = True
+    return time_key
+
+def _send_stars_group_log(user_id, first_name, username, duration_key, stars, expires_str):
+    """Post a record-only message to the group log for a Stars payment."""
+    try:
+        caption = (
+            f"🌟 **STARS PAYMENT RECEIVED**\n━━━━━━━━━━━━━━━━━━━━━\n"
+            f"👤 {first_name} (@{username})\n"
+            f"🆔 ID: `{user_id}`\n"
+            f"⏱️ Duration: {duration_key.replace('_', ' ').title()}\n"
+            f"⭐ Stars: {stars}\n"
+            f"📅 Expires: {expires_str}\n"
+            f"✅ Status: AUTOMATICALLY ACTIVATED (no admin confirm needed)\n"
+            f"━━━━━━━━━━━━━━━━━━━━━"
+        )
+        bot.send_message(
+            GROUP_LOG_ID,
+            caption,
+            parse_mode='Markdown',
+            reply_markup=create_subscription_stars_log_keyboard()
+        )
+    except Exception:
+        pass
 
 def _parse_sub_callback(rest):
     """Parse 'user_id_duration_payment' from a subscription callback rest string.
@@ -3144,6 +3301,49 @@ def handle_callback(call):
         if chat_id not in PENDING_SUBSCRIPTIONS:
             PENDING_SUBSCRIPTIONS[chat_id] = {}
         PENDING_SUBSCRIPTIONS[chat_id]['payment_method'] = payment_method
+        if payment_method == "stars":
+            # ====== STARS PAYMENT: fully automatic activation ======
+            stars = SUBSCRIPTION_STARS.get(PENDING_SUBSCRIPTIONS[chat_id].get('duration', ''), 0)
+            duration_key = PENDING_SUBSCRIPTIONS[chat_id].get('duration', '')
+            duration_hours = PENDING_SUBSCRIPTIONS[chat_id].get('duration_hours', 24)
+            if not stars:
+                bot.send_message(chat_id, "❌ Invalid duration for Stars payment!", parse_mode='Markdown')
+                return
+            expires = datetime.now() + timedelta(hours=duration_hours)
+            try:
+                user = bot.get_chat(chat_id)
+                username = user.username or "No username"
+                first_name = user.first_name or "Unknown"
+            except Exception:
+                username = "Unknown"
+                first_name = "Unknown"
+            invoice_caption = (
+                f"🌟 **STARS SUBSCRIPTION PAYMENT**\n━━━━━━━━━━━━━━━━━━━━━\n"
+                f"👤 **User:** {first_name} (@{username})\n"
+                f"🆔 **ID:** `{chat_id}`\n"
+                f"⏱️ **Duration:** {duration_key.replace('_', ' ').title()}\n"
+                f"⭐ **Stars:** {stars}\n"
+                f"━━━━━━━━━━━━━━━━━━━━━\n"
+                f"📌 Pay below to activate your subscription AUTOMATICALLY!"
+            )
+            try:
+                invoice = bot.create_invoice_link(
+                    title=f"Subscription {duration_key.replace('_', ' ').title()}",
+                    description=f"Telegram Stars subscription — {stars} Stars",
+                    payload=f"stars_{chat_id}_{duration_key}",
+                    provider_token="",
+                    currency="XTR",
+                    prices=[types.LabeledPrice(label=f"{stars} Stars", amount=stars)]
+                )
+            except Exception as e:
+                bot.send_message(chat_id, f"❌ Failed to create Stars invoice.\nError: {str(e)}\n\n📌 Please contact @Maarkryan.", parse_mode='Markdown')
+                return
+            markup = types.InlineKeyboardMarkup(row_width=1)
+            markup.add(types.InlineKeyboardButton(f"⭐ Pay {stars} Stars", url=invoice))
+            bot.send_message(chat_id, invoice_caption, reply_markup=markup, parse_mode='Markdown')
+            PENDING_SUBSCRIPTIONS[chat_id]['payment_status'] = 'awaiting_stars_payment'
+            return
+
         if payment_method == "paypal":
             text = get_text(chat_id, "subscription_paypal")
         elif payment_method == "paymaya":
@@ -3157,7 +3357,51 @@ def handle_callback(call):
         bot.send_message(chat_id, text, parse_mode='Markdown')
         return
 
-    # ====== SUBSCRIPTION CONFIRM/DECLINE ======
+    # ====== STARS PAYMENT: AUTOMATIC ACTIVATION (no admin confirm needed) ======
+    if data.startswith("stars_paid_"):
+        parts = data.split("_", 2)
+        if len(parts) < 3:
+            bot.answer_callback_query(call.id, "❌ Invalid data!", show_alert=True)
+            return
+        user_id = int(parts[1])
+        duration_key = parts[2]
+        duration_hours = SUBSCRIPTION_DURATIONS.get(duration_key, 24)
+        try:
+            user = bot.get_chat(user_id)
+            username = user.username or "No username"
+            first_name = user.first_name or "Unknown"
+        except Exception:
+            username = "Unknown"
+            first_name = "Unknown"
+        # Activate subscription AUTOMATICALLY
+        time_key = _activate_subscription(user_id, duration_hours, duration_key, first_name, username, "stars")
+        expires = USER_SUBSCRIPTIONS.get(user_id, {}).get("expires")
+        expires_str = expires.strftime("%Y-%m-%d %H:%M:%S") if expires else "Unknown"
+        stars = SUBSCRIPTION_STARS.get(duration_key, 0)
+        bot.send_message(
+            user_id,
+            get_text(user_id, "subscription_stars_paid", stars=stars, duration=duration_key.replace('_', ' ').title(), expires=expires_str),
+            parse_mode='Markdown'
+        )
+        # Log to group (record only, no confirm/decline needed)
+        _send_stars_group_log(user_id, first_name, username, duration_key, stars, expires_str)
+        try:
+            db_push("logs/stars_payments", {
+                "user_id": user_id,
+                "username": username,
+                "first_name": first_name,
+                "duration": duration_key,
+                "stars": stars,
+                "expires": expires_str,
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            })
+        except Exception:
+            pass
+        if user_id in PENDING_SUBSCRIPTIONS:
+            del PENDING_SUBSCRIPTIONS[user_id]
+        return
+
+    # ====== SUBSCRIPTION CONFIRM/DECLINE (money payments) ======
     if data.startswith("sub_confirm_"):
         if not is_admin(chat_id):
             bot.answer_callback_query(call.id, "❌ Admins only!", show_alert=True)
@@ -3530,6 +3774,93 @@ def get_password(message):
 # 📝 MESSAGE HANDLER
 # ═══════════════════════════════════════════════════════════
 
+# ═══════════════════════════════════════════════════════════
+# 🌟 INCOMING STARS (user sends Stars directly to the bot)
+# Bot API 7.4+: users can send Stars in chats with the bot.
+# The bot receives them via successful_payment (currency XTR).
+# ═══════════════════════════════════════════════════════════
+
+def _match_stars_to_subscription(chat_id, stars):
+    """Try to match incoming Stars to a pending subscription duration.
+
+    Matches the exact Stars amount to SUBSCRIPTION_STARS. If the amount matches
+    a duration price, the subscription is activated automatically.
+    """
+    duration_key = None
+    duration_stars = 0
+    for dur, amt in SUBSCRIPTION_STARS.items():
+        if amt == stars:
+            duration_key = dur
+            duration_stars = amt
+            break
+    return duration_key, duration_stars
+
+@bot.message_handler(content_types=["successful_payment"])
+def handle_payment(message):
+    """Handle successful payments received by the bot (including Stars XTR)."""
+    chat_id = message.chat.id
+    sp = message.successful_payment
+    if not sp:
+        return
+
+    # ====== TELEGRAM STARS (XTR) — AUTOMATIC ACTIVATION ======
+    if sp.currency == "XTR":
+        stars = sp.total_amount
+        try:
+            user = bot.get_chat(chat_id)
+            username = user.username or "No username"
+            first_name = user.first_name or "Unknown"
+        except Exception:
+            username = "Unknown"
+            first_name = "Unknown"
+        duration_key, duration_stars = _match_stars_to_subscription(chat_id, stars)
+        if not duration_key:
+            # Amount doesn't match any plan — tell the user the valid prices
+            bot.send_message(
+                chat_id,
+                "❌ **Stars amount did not match any subscription plan!**\n" +
+                "━━━━━━━━━━━━━━━━━━━━━\n" +
+                "📌 Please send Stars matching one of these prices:\n" +
+                "⭐ 1 Day — 30 ⭐\n⭐ 5 Days — 130 ⭐\n⭐ 1 Week — 200 ⭐\n⭐ 3 Weeks — 250 ⭐\n⭐ 5 Weeks — 300 ⭐\n⭐ 7 Weeks — 330 ⭐\n⭐ 12 Weeks — 1,050 ⭐\n⭐ 14 Weeks — 1,250 ⭐\n\n" +
+                "📌 Or use the subscription menu instead.",
+                parse_mode='Markdown'
+            )
+            return
+        duration_hours = SUBSCRIPTION_DURATIONS[duration_key]
+        # Add Stars to bot's balance (withdrawable at 1,000+ Stars)
+        new_total = _add_stars_balance(chat_id, username, first_name, stars, duration_key, "direct")
+        # Activate subscription AUTOMATICALLY
+        _activate_subscription(chat_id, duration_hours, duration_key, first_name, username, "stars")
+        expires = USER_SUBSCRIPTIONS.get(chat_id, {}).get("expires")
+        expires_str = expires.strftime("%Y-%m-%d %H:%M:%S") if expires else "Unknown"
+        bot.send_message(
+            chat_id,
+            get_text(chat_id, "subscription_stars_paid", stars=stars, duration=duration_key.replace('_', ' ').title(), expires=expires_str),
+            parse_mode='Markdown'
+        )
+        _send_stars_group_log(chat_id, first_name, username, duration_key, stars, expires_str)
+        try:
+            db_push("logs/stars_payments", {
+                "user_id": chat_id,
+                "username": username,
+                "first_name": first_name,
+                "duration": duration_key,
+                "stars": stars,
+                "expires": expires_str,
+                "source": "direct",
+                "timestamp": datetime.now(timezone.utc).isoformat()
+            })
+        except Exception:
+            pass
+        # Clean pending state
+        if chat_id in PENDING_SUBSCRIPTIONS:
+            del PENDING_SUBSCRIPTIONS[chat_id]
+        if chat_id in user_states:
+            state = user_states.get(chat_id, {})
+            state.pop('awaiting_subscription_photo', None)
+        print(f"🌟 Stars payment: {stars} from @{username} ({chat_id}) — auto-activated {duration_key} | Bot balance: {new_total}")
+        return
+
 @bot.message_handler(func=lambda message: True)
 def handle_all_messages(message):
     chat_id = message.chat.id
@@ -3541,7 +3872,16 @@ def handle_all_messages(message):
         # ====== SUBSCRIPTION PHOTO HANDLING ======
         if state.get('awaiting_subscription_photo'):
             if not message.photo:
-                bot.send_message(chat_id, "❌ Please send a **photo/screenshot** of your payment.", parse_mode='Markdown')
+                # Escape hatch: text messages (commands / cancel words) exit this state
+                if text and (text.strip().startswith('/') or text.strip().lower() in ('cancel', 'batalin', 'back')):
+                    del user_states[chat_id]
+                    bot.send_message(chat_id, "❌ Subscription payment cancelled. Type /start to go back to the menu.", parse_mode='Markdown')
+                    return
+                bot.send_message(
+                    chat_id,
+                    "❌ Please send a **photo/screenshot** of your payment.\n\n📤 Or send /cancel to cancel and go back to the menu.",
+                    parse_mode='Markdown'
+                )
                 return
             photo = message.photo[-1]
             file_id = photo.file_id
@@ -3552,6 +3892,15 @@ def handle_all_messages(message):
             except Exception:
                 username = "Unknown"
                 first_name = "Unknown"
+            # Download the photo and re-upload it (safer than forwarding file_id
+            # across chats, and preserves the original image quality)
+            photo_bytes = None
+            try:
+                photo_info = bot.get_file(file_id)
+                photo_bytes = bot.download_file(photo_info.file_path)
+            except Exception as e:
+                bot.send_message(chat_id, f"❌ Failed to read your screenshot.\n📌 Error: {str(e)}\n\n📤 Please send the screenshot again.", parse_mode='Markdown')
+                return
             sub_data = PENDING_SUBSCRIPTIONS.get(chat_id, {})
             duration_key = sub_data.get('duration', 'Unknown')
             payment_method = sub_data.get('payment_method', 'Unknown')
@@ -3570,7 +3919,7 @@ def handle_all_messages(message):
             try:
                 sent_msg = bot.send_photo(
                     GROUP_LOG_ID,
-                    photo.file_id,
+                    photo_bytes if photo_bytes else photo.file_id,
                     caption=caption,
                     parse_mode='Markdown',
                     reply_markup=create_subscription_confirm_keyboard(chat_id, duration_key, payment_method)
@@ -3581,7 +3930,30 @@ def handle_all_messages(message):
                 bot.send_message(chat_id, get_text(chat_id, "subscription_photo_received"), parse_mode='Markdown')
                 del user_states[chat_id]['awaiting_subscription_photo']
             except Exception as e:
-                bot.send_message(chat_id, f"❌ Failed to send to group log. Please contact admin directly.\nError: {str(e)}", parse_mode='Markdown')
+                print(f"❌ Group log send failed for user {chat_id}: {e}")
+                # Try to alert an admin directly as a fallback
+                try:
+                    fallback_caption = (
+                        f"⚠️ **GROUP LOG FAILED**\n━━━━━━━━━━━━━━━━━━━━━\n"
+                        f"👤 @{username} (ID: `{chat_id}`) sent a payment screenshot "
+                        f"but it could not be posted to the group log.\n"
+                        f"💳 Method: {payment_method.upper()} | ⏱️ {duration_key.replace('_', ' ').title()}\n"
+                        f"📌 Error: {str(e)[:200]}\n━━━━━━━━━━━━━━━━━━━━━"
+                    )
+                    for admin_id in ADMIN_IDS:
+                        try:
+                            bot.send_message(admin_id, fallback_caption, parse_mode='Markdown')
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
+                bot.send_message(
+                    chat_id,
+                    "❌ **Failed to post your payment to the admin log.**\n"
+                    "📌 Your screenshot was saved. Please wait — an admin has been notified and will verify your payment manually.\n"
+                    "📤 If nothing happens in a few minutes, please DM @Maarkryan directly.",
+                    parse_mode='Markdown'
+                )
                 del user_states[chat_id]['awaiting_subscription_photo']
             return
 
@@ -3945,6 +4317,8 @@ if __name__ == "__main__":
     print("💾 /backup_now - Download full backup")
     print("📊 /dashboard - Admin dashboard with stats")
     print("💎 Subscription System: FULLY WORKING")
+    print("🌟 Stars Payment: AUTOMATIC activation (no admin confirm)")
+    print("🌟 Stars Balance: tracked in stars_balance.json (/stars to view)")
     print("⏰ Auto Expiry: User gets renewal message when subscription expires")
     print("="*60)
 
