@@ -2514,6 +2514,28 @@ def admin_command(message):
 # 🎯 CALLBACK HANDLER
 # ═══════════════════════════════════════════════════════════
 
+def _parse_sub_callback(rest):
+    """Parse 'user_id_duration_payment' from a subscription callback rest string.
+
+    Handles durations and payment methods that contain underscores (e.g. 1_day, gcash_to_paymaya)
+    by validating against the known dictionaries instead of blind splitting.
+    Returns (user_id, duration_key, payment_method) or (None, None, None) on failure.
+    """
+    try:
+        user_id = int(rest.split("_", 1)[0])
+        remainder = rest.split("_", 1)[1]
+    except Exception:
+        return None, None, None
+    # Try all combinations of known duration keys + payment methods
+    for dur in SUBSCRIPTION_DURATIONS:
+        if remainder.startswith(dur + "_"):
+            pm = remainder[len(dur) + 1:]
+            if pm in PAYMENT_METHODS:
+                return user_id, dur, pm
+        if remainder == dur and dur in PAYMENT_METHODS:
+            return user_id, dur, dur
+    return None, None, None
+
 @bot.callback_query_handler(func=lambda call: True)
 def handle_callback(call):
     chat_id = call.message.chat.id
@@ -3140,10 +3162,14 @@ def handle_callback(call):
         if not is_admin(chat_id):
             bot.answer_callback_query(call.id, "❌ Admins only!", show_alert=True)
             return
-        parts = data.split("_")
-        user_id = int(parts[2])
-        duration_key = parts[3]
-        payment_method = parts[4]
+        rest = data[len("sub_confirm_"):]
+        user_id, duration_key, payment_method = _parse_sub_callback(rest)
+        if not user_id:
+            bot.answer_callback_query(call.id, "❌ Invalid data!", show_alert=True)
+            return
+        if payment_method not in PAYMENT_METHODS:
+            bot.answer_callback_query(call.id, "❌ Invalid payment method!", show_alert=True)
+            return
         duration_hours = SUBSCRIPTION_DURATIONS.get(duration_key, 24)
         try:
             user = bot.get_chat(user_id)
@@ -3201,10 +3227,14 @@ def handle_callback(call):
         if not is_admin(chat_id):
             bot.answer_callback_query(call.id, "❌ Admins only!", show_alert=True)
             return
-        parts = data.split("_")
-        user_id = int(parts[2])
-        duration_key = parts[3]
-        payment_method = parts[4]
+        rest = data[len("sub_decline_"):]
+        user_id, duration_key, payment_method = _parse_sub_callback(rest)
+        if not user_id:
+            bot.answer_callback_query(call.id, "❌ Invalid data!", show_alert=True)
+            return
+        if payment_method not in PAYMENT_METHODS:
+            bot.answer_callback_query(call.id, "❌ Invalid payment method!", show_alert=True)
+            return
         bot.send_message(
             user_id,
             "❌ **SUBSCRIPTION DECLINED**\n━━━━━━━━━━━━━━━━━━━━━\n⚠️ Your payment could not be verified.\n📌 Please contact @Maarkryan for assistance.",
@@ -3217,12 +3247,13 @@ def handle_callback(call):
         except Exception:
             username = "Unknown"
             first_name = "Unknown"
-        log_msg_id = PENDING_SUBSCRIPTIONS.get(user_id, {}).get('log_message_id')
-        if log_msg_id:
-            bot.edit_message_text(
-                f"❌ **SUBSCRIPTION DECLINED**\n━━━━━━━━━━━━━━━━━━━━━\n👤 {first_name} (@{username})\n🆔 ID: `{user_id}`\n⏱️ Duration: {duration_key.replace('_', ' ').title()}\n💳 Payment: {payment_method.upper()}\n❌ Declined by: @{bot.get_chat(chat_id).username or 'Admin'}",
-                GROUP_LOG_ID, log_msg_id, parse_mode='Markdown'
-            )
+        try:
+            log_msg_id = PENDING_SUBSCRIPTIONS.get(user_id, {}).get('log_message_id')
+            if log_msg_id:
+                bot.edit_message_text(
+                    f"❌ **SUBSCRIPTION DECLINED**\n━━━━━━━━━━━━━━━━━━━━━\n👤 {first_name} (@{username})\n🆔 ID: `{user_id}`\n⏱️ Duration: {duration_key.replace('_', ' ').title()}\n💳 Payment: {payment_method.upper()}\n❌ Declined by: @{bot.get_chat(chat_id).username or 'Admin'}",
+                    GROUP_LOG_ID, log_msg_id, parse_mode='Markdown'
+                )
         except Exception:
             pass
         bot.answer_callback_query(call.id, "❌ Subscription declined!", show_alert=True)
@@ -3898,7 +3929,7 @@ if __name__ == "__main__":
     print("="*60)
     print("✅ Bot is running!")
     print("👑 Admins: 6531314640, 8650959684")
-    print("🔑 Keys: MARKMWEHEHETOOL928, MARKK, TANNER")
+    print("🔑 Keys: MARKMWEHEHETOOL7077, MARKK, TANNER")
     print("⏰ Time Keys: Supported (Admin can create keys with custom hours)")
     print("🎁 Free Trial: Supported (10 minutes)")
     print("📱 CPM1:")
