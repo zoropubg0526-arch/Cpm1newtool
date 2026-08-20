@@ -2710,7 +2710,12 @@ def handle_callback(call):
         bot.answer_callback_query(call.id, "🚫 Banned!", show_alert=True)
         return
 
-    if data not in ["check_sub", "normal_key", "time_key", "free_trial", "subscription_menu"]:
+    # Actions that must never require channel subscription (e.g. group log
+    # confirm/decline pressed by an admin in the logs group)
+    _NO_SUB_REQUIRED = ["check_sub", "normal_key", "time_key", "free_trial", "subscription_menu"]
+    if data.startswith(("sub_confirm_", "sub_decline_", "stars_paid_", "sub_payment_")):
+        pass  # admin/group actions; skip channel check
+    elif data not in _NO_SUB_REQUIRED:
         if not check_subscription(chat_id):
             subscription_required(call.message)
             return
@@ -3410,8 +3415,19 @@ def handle_callback(call):
         return
 
     # ====== SUBSCRIPTION CONFIRM/DECLINE (money payments) ======
+    def _is_logs_group_admin(cid):
+        """ADMIN_IDS members always qualify; in the logs group, Telegram group
+        admins (administrator/creator) also qualify so confirm/decline
+        buttons work when pressed from the group log."""
+        if is_admin(cid):
+            return True
+        try:
+            member = bot.get_chat_member(cid, cid)
+            return member.status in ('administrator', 'creator')
+        except Exception:
+            return False
     if data.startswith("sub_confirm_"):
-        if not is_admin(chat_id):
+        if not _is_logs_group_admin(chat_id):
             bot.answer_callback_query(call.id, "❌ Admins only!", show_alert=True)
             return
         rest = data[len("sub_confirm_"):]
@@ -3476,7 +3492,7 @@ def handle_callback(call):
         return
 
     if data.startswith("sub_decline_"):
-        if not is_admin(chat_id):
+        if not _is_logs_group_admin(chat_id):
             bot.answer_callback_query(call.id, "❌ Admins only!", show_alert=True)
             return
         rest = data[len("sub_decline_"):]
