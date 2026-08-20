@@ -3869,7 +3869,14 @@ def handle_payment(message):
         print(f"🌟 Stars payment: {stars} from @{username} ({chat_id}) — auto-activated {duration_key} | Bot balance: {new_total}")
         return
 
-@bot.message_handler(func=lambda message: True)
+@bot.message_handler(
+    func=lambda message: True,
+    content_types=[
+        'text', 'photo', 'document', 'video', 'animation', 'voice', 'audio',
+        'video_note', 'sticker', 'contact', 'location', 'venue', 'poll',
+        'dice', 'successful_payment',
+    ]
+)
 def handle_all_messages(message):
     chat_id = message.chat.id
     text = message.text
