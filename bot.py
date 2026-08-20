@@ -54,12 +54,19 @@ def health():
     return jsonify({"status": "healthy"})
 
 def run_flask():
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
+    """Flask health server for Render (runs in background, never blocks)."""
+    try:
+        import logging
+        logging.getLogger('werkzeug').setLevel(logging.ERROR)
+        port = int(os.environ.get('PORT', 5000))
+        app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False, threaded=True)
+    except SystemExit:
+        pass
+    except Exception as e:
+        print(f"⚠️ Flask server error: {e}")
 
-# Start Flask in a separate thread
-flask_thread = threading.Thread(target=run_flask, daemon=True)
-flask_thread.start()
+# Flask is started LATER, inside __main__, to keep the module import clean
+flask_thread = None
 
 # ═══════════════════════════════════════════════════════════
 # 🔑 TOKENS & KEYS
@@ -4333,9 +4340,20 @@ def _enforce_single_instance():
     except Exception as e:
         print(f"⚠️ Single-instance check skipped: {e}")
 
+def _start_flask_background():
+    """Start Flask in a background daemon thread so the main process is never
+    blocked by the web server (prevents Render status 143 exits)."""
+    global flask_thread
+    flask_thread = threading.Thread(target=run_flask, daemon=True)
+    flask_thread.start()
+    print("🌐 Flask health server started in background (port 5000)")
+
 if __name__ == "__main__":
     # Ensure only ONE bot instance is running (prevents Telegram 409 Conflict)
     _enforce_single_instance()
+
+    # Start the health-check web server in the background
+    _start_flask_background()
     print("="*60)
     print("☠️☠️☠️ MARKMWEHEHETOOL BOT - CPM1 + CPM2 ULTIMATE ☠️☠️☠️")
     print("="*60)
@@ -4369,6 +4387,7 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"⚠️ Webhook cleanup: {e}")
 
+    print("🚀 Starting long-polling (bot will stay alive 24/7)...")
     while True:
         try:
             bot.polling(none_stop=True, timeout=20)
