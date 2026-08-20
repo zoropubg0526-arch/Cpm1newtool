@@ -1941,7 +1941,6 @@ def use_time_key(key: str, user_id: int) -> Tuple[bool, str]:
             return False, "Key already used by another user"
     key_data["used"] = True
     key_data["user_id"] = user_id
-    # Store in USER_SUBSCRIPTIONS for expiry tracking
     USER_SUBSCRIPTIONS[user_id] = {
         "expires": key_data["expires"],
         "duration": key_data["duration"],
