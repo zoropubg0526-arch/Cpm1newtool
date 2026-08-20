@@ -2476,6 +2476,21 @@ def start(message):
                 parse_mode='Markdown'
             )
             return
+        else:
+            # Active subscriber — skip the activation menu entirely.
+            total_users.add(chat_id)
+            if chat_id in user_states:
+                del user_states[chat_id]
+            if chat_id in user_sessions and not user_sessions[chat_id].get('logged_in'):
+                user_sessions[chat_id]['logged_in'] = True
+            expires = sub_data['expires'].strftime("%Y-%m-%d %H:%M")
+            bot.send_message(
+                chat_id,
+                f"💎 **WELCOME BACK, SUBSCRIBER!** 💎\n━━━━━━━━━━━━━━━━━━━━━\n✅ Your subscription is active.\n⏱️ Duration: {sub_data['duration']} hours\n📅 Expires: {expires}\n━━━━━━━━━━━━━━━━━━━━━\n🎮 You can now use all features!",
+                reply_markup=create_main_keyboard(chat_id),
+                parse_mode='Markdown'
+            )
+            return
     total_users.add(chat_id)
     if not check_subscription(chat_id):
         subscription_required(message)
