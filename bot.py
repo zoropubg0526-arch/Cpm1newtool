@@ -58,7 +58,7 @@ def run_flask():
     try:
         import logging
         logging.getLogger('werkzeug').setLevel(logging.ERROR)
-        port = int(os.environ.get('PORT', 5000))
+        port = int(os.environ.get('PORT', 10000))  # Render's default web port is 10000
         app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False, threaded=True)
     except SystemExit:
         pass
@@ -4346,7 +4346,8 @@ def _start_flask_background():
     global flask_thread
     flask_thread = threading.Thread(target=run_flask, daemon=True)
     flask_thread.start()
-    print("🌐 Flask health server started in background (port 5000)")
+    port = int(os.environ.get('PORT', 10000))
+    print(f"🌐 Flask health server started in background (port {port})")
 
 if __name__ == "__main__":
     # Ensure only ONE bot instance is running (prevents Telegram 409 Conflict)
