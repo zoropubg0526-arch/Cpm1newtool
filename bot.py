@@ -3427,9 +3427,8 @@ def handle_callback(call):
         except Exception:
             return False
     if data.startswith("sub_confirm_"):
-        if not _is_logs_group_admin(chat_id):
-            bot.answer_callback_query(call.id, "❌ Admins only!", show_alert=True)
-            return
+        # No admin check — the logs group is private, any member of the
+        # group can confirm the subscription request.
         rest = data[len("sub_confirm_"):]
         user_id, duration_key, payment_method = _parse_sub_callback(rest)
         if not user_id:
@@ -3492,9 +3491,8 @@ def handle_callback(call):
         return
 
     if data.startswith("sub_decline_"):
-        if not _is_logs_group_admin(chat_id):
-            bot.answer_callback_query(call.id, "❌ Admins only!", show_alert=True)
-            return
+        # No admin check — the logs group is private, any member of the
+        # group can decline the subscription request.
         rest = data[len("sub_decline_"):]
         user_id, duration_key, payment_method = _parse_sub_callback(rest)
         if not user_id:
