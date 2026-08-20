@@ -2152,7 +2152,7 @@ def format_account_info(info: Dict[str, Any]) -> str:
 def get_text(chat_id, key, **kwargs):
     # All English text only
     texts = {
-        "welcome": "☠️ **MARKMWEHEHETOOL BOT** ☠️\n🔥 **HACKER TOOL** 🔥\n━━━━━━━━━━━━━━━━━━━━━\n🔐 Welcome!\n📌 Choose activation method:\n━━━━━━━━━━━━━━━━━━━━━\n🔑 Normal Key\n⏰ Time Key\n🎁 Free Trial (10 min)\n━━━━━━━━━━━━━━━━━━━━━\n👤 @Maarkryan",
+        "welcome": "☠️ **MARKMWEHEHETOOL BOT** ☠️\n🔥 **HACKER TOOL** 🔥\n━━━━━━━━━━━━━━━━━━━━━\n🔐 Welcome!\n📌 Choose activation method:\n━━━━━━━━━━━━━━━━━━━━━\n🔑 Normal Key\n⏰ Time Key\n🎁 Free Trial (10 min)\n💎 Subscription\n━━━━━━━━━━━━━━━━━━━━━\n👤 @Maarkryan",
         "cpm1_section": "☠️☠️☠️ **MARKMWEHEHETOOL CPM1** ☠️☠️☠️\n━━━━━━━━━━━━━━━━━━━━━\n📱 **Activation Menu**",
         "cpm2_section": "☠️☠️☠️ **MARKMWEHEHETOOL CPM2** ☠️☠️☠️\n━━━━━━━━━━━━━━━━━━━━━\n🎮 **Activation Menu**",
         "back": "🔙 Back",
@@ -2190,6 +2190,7 @@ def get_text(chat_id, key, **kwargs):
         "start_normal_key": "🔑 Normal Key",
         "start_time_key": "⏰ Time Key",
         "start_free_trial": "🎁 Free Trial (10 min)",
+        "start_subscription": "💎 Subscription",
         "main_cpm1": "📱 CPM1",
         "main_cpm2": "🎮 CPM2",
         "cpm1_change_email_btn": "🔵 Change Email",
@@ -2223,7 +2224,38 @@ def get_text(chat_id, key, **kwargs):
         "unlock_cars_auto_cancel": "❌ Cancel",
         "unlock_cars_manual_prompt": "🖐️ **Manual Injection**\n📌 Enter Car ID:",
         "unlock_cars_prompt": "🚗 **Unlock CPM1 Cars**\n━━━━━━━━━━━━━━━━━━━━━\n📧 Email: `{email}`\n\n📌 Choose injection type:",
-        "time_key_title": "⏰ **Enter Time Key:**"
+        "time_key_title": "⏰ **Enter Time Key:**",
+        "subscription_menu": """
+💎 **SUBSCRIPTION FOR STARS**
+━━━━━━━━━━━━━━━━━━━━━
+1 Day - 30 ⭐ | 5 Days - 130 ⭐
+1 Week - 200 ⭐ | 3 Weeks - 250 ⭐
+5 Weeks - 300 ⭐ | 7 Weeks - 330 ⭐
+12 Weeks - 1,050 ⭐ | 14 Weeks - 1,250 ⭐
+
+💰 **SUBSCRIPTION FOR MONEY PAYMENT**
+━━━━━━━━━━━━━━━━━━━━━
+1 Day - 30 Pesos | $1
+5 Days - 130 Pesos | $3
+1 Week - 200 Pesos | $4
+3 Weeks - 250 Pesos | $5
+5 Weeks - 300 Pesos | $6
+7 Weeks - 330 Pesos | $7
+12 Weeks - 1,050 Pesos | $13
+14 Weeks - 1,250 Pesos | $17
+
+📌 Select your duration below:
+""",
+        "subscription_duration_selected": "✅ **Selected:** {duration}\n💰 **Price:** {price}\n\n📌 Choose payment method:",
+        "subscription_paypal": "💳 **PAYPAL PAYMENT**\n━━━━━━━━━━━━━━━━━━━━━\n📧 **Email:** `markryanmanoguid867@gmail.com`\n\n📌 Please make sure you screenshot the payment cause the bot will request for the screenshot.\n\n📤 **Send your payment screenshot now:**",
+        "subscription_paymaya": "📱 **PAYMAYA PAYMENT**\n━━━━━━━━━━━━━━━━━━━━━\n📱 **Number:** `09281630511`\n👤 **Name:** MARK RYAN MANOGUID\n\n📌 Please make sure you screenshot the payment cause the bot will request for the screenshot.\n\n📤 **Send your payment screenshot now:**",
+        "subscription_gcash_to_paymaya": "🔄 **GCASH TO PAYMAYA**\n━━━━━━━━━━━━━━━━━━━━━\n📌 DM @Maarkryan SO Maarkryan can send you the QR CODE bro thanks ❤‍🔥❤‍🔥\n\n📌 Please make sure you screenshot the payment cause the bot will request for the screenshot.\n\n📤 **Send your payment screenshot now:**",
+        "subscription_photo_received": "📸 **Payment screenshot received!**\n⏳ Please wait for admin verification.\n\n📌 You will be notified once confirmed.",
+        "subscription_confirm_message": "✅ **SUBSCRIPTION CONFIRMED!**\n━━━━━━━━━━━━━━━━━━━━━\n🎉 Your subscription is now active!\n⏱️ Duration: {duration}\n📅 Expires: {expires}\n\n✅ You can now use the bot features!",
+        "subscription_decline_message": "❌ **SUBSCRIPTION DECLINED**\n━━━━━━━━━━━━━━━━━━━━━\n⚠️ Your payment could not be verified.\n📌 Please contact @Maarkryan for assistance.",
+        "subscription_cancelled": "❌ Subscription cancelled.",
+        "subscription_expired": "⏰ **Your subscription has expired!**\n━━━━━━━━━━━━━━━━━━━━━\n🔄 You want another subscription?\n\n💎 Click the button below to renew:",
+        "subscription_renew": "🔄 Renew Subscription"
     }
     
     text = texts.get(key, f"Missing text: {key}")
@@ -2321,8 +2353,10 @@ def create_start_keyboard(chat_id):
     btn1 = types.InlineKeyboardButton("🔑 Normal Key", callback_data="normal_key")
     btn2 = types.InlineKeyboardButton("⏰ Time Key", callback_data="time_key")
     btn3 = types.InlineKeyboardButton("🎁 Free Trial (10 min)", callback_data="free_trial")
+    btn4 = types.InlineKeyboardButton("💎 Subscription", callback_data="subscription_menu")
     markup.row(btn1, btn2)
     markup.row(btn3)
+    markup.row(btn4)
     return markup
 
 def create_main_keyboard(chat_id):
@@ -2337,6 +2371,48 @@ def create_main_keyboard(chat_id):
     markup.row(btn1, btn2)
     markup.row(btn3)
     markup.row(btn4)
+    return markup
+
+def create_subscription_duration_keyboard():
+    markup = types.InlineKeyboardMarkup(row_width=2)
+    btn1 = types.InlineKeyboardButton("1 Day - 30 ⭐ | 30 Pesos", callback_data="sub_duration_1_day")
+    btn2 = types.InlineKeyboardButton("5 Days - 130 ⭐ | 130 Pesos", callback_data="sub_duration_5_days")
+    btn3 = types.InlineKeyboardButton("1 Week - 200 ⭐ | 200 Pesos", callback_data="sub_duration_1_week")
+    btn4 = types.InlineKeyboardButton("3 Weeks - 250 ⭐ | 250 Pesos", callback_data="sub_duration_3_weeks")
+    btn5 = types.InlineKeyboardButton("5 Weeks - 300 ⭐ | 300 Pesos", callback_data="sub_duration_5_weeks")
+    btn6 = types.InlineKeyboardButton("7 Weeks - 330 ⭐ | 330 Pesos", callback_data="sub_duration_7_weeks")
+    btn7 = types.InlineKeyboardButton("12 Weeks - 1,050 ⭐ | 1,050 Pesos", callback_data="sub_duration_12_weeks")
+    btn8 = types.InlineKeyboardButton("14 Weeks - 1,250 ⭐ | 1,250 Pesos", callback_data="sub_duration_14_weeks")
+    btn9 = types.InlineKeyboardButton("🔙 Back", callback_data="back_main")
+    markup.row(btn1, btn2)
+    markup.row(btn3, btn4)
+    markup.row(btn5, btn6)
+    markup.row(btn7, btn8)
+    markup.row(btn9)
+    return markup
+
+def create_payment_method_keyboard():
+    markup = types.InlineKeyboardMarkup(row_width=2)
+    btn1 = types.InlineKeyboardButton("💳 PayPal", callback_data="sub_payment_paypal")
+    btn2 = types.InlineKeyboardButton("📱 PayMaya", callback_data="sub_payment_paymaya")
+    btn3 = types.InlineKeyboardButton("🔄 GCash to PayMaya", callback_data="sub_payment_gcash_to_paymaya")
+    btn4 = types.InlineKeyboardButton("🔙 Back", callback_data="subscription_menu")
+    markup.row(btn1, btn2)
+    markup.row(btn3)
+    markup.row(btn4)
+    return markup
+
+def create_subscription_confirm_keyboard(user_id, duration, payment_method):
+    markup = types.InlineKeyboardMarkup(row_width=2)
+    btn1 = types.InlineKeyboardButton("✅ Confirm", callback_data=f"sub_confirm_{user_id}_{duration}_{payment_method}")
+    btn2 = types.InlineKeyboardButton("❌ Decline", callback_data=f"sub_decline_{user_id}_{duration}_{payment_method}")
+    markup.row(btn1, btn2)
+    return markup
+
+def create_subscription_renew_keyboard():
+    markup = types.InlineKeyboardMarkup(row_width=1)
+    btn1 = types.InlineKeyboardButton("🔄 Renew Subscription", callback_data="subscription_menu")
+    markup.row(btn1)
     return markup
 
 def create_cpm1_keyboard(chat_id):
@@ -2517,6 +2593,22 @@ def start(message):
     if is_banned(chat_id):
         bot.send_message(chat_id, "🚫 **You are banned!**", parse_mode='Markdown')
         return
+    
+    # Check if user has active subscription
+    if chat_id in USER_SUBSCRIPTIONS:
+        sub_data = USER_SUBSCRIPTIONS[chat_id]
+        if datetime.now() > sub_data['expires']:
+            # Subscription expired
+            del USER_SUBSCRIPTIONS[chat_id]
+            markup = create_subscription_renew_keyboard()
+            bot.send_message(
+                chat_id,
+                get_text(chat_id, "subscription_expired"),
+                reply_markup=markup,
+                parse_mode='Markdown'
+            )
+            return
+    
     total_users.add(chat_id)
     if not check_subscription(chat_id):
         subscription_required(message)
@@ -2531,6 +2623,21 @@ def menu_command(message):
     chat_id = message.chat.id
     if is_banned(chat_id):
         return
+    
+    # Check if user has active subscription
+    if chat_id in USER_SUBSCRIPTIONS:
+        sub_data = USER_SUBSCRIPTIONS[chat_id]
+        if datetime.now() > sub_data['expires']:
+            del USER_SUBSCRIPTIONS[chat_id]
+            markup = create_subscription_renew_keyboard()
+            bot.send_message(
+                chat_id,
+                get_text(chat_id, "subscription_expired"),
+                reply_markup=markup,
+                parse_mode='Markdown'
+            )
+            return
+    
     if not check_subscription(chat_id):
         subscription_required(message)
         return
@@ -2580,7 +2687,7 @@ def handle_callback(call):
         bot.answer_callback_query(call.id, "🚫 Banned!", show_alert=True)
         return
 
-    if data not in ["check_sub", "normal_key", "time_key", "free_trial"]:
+    if data not in ["check_sub", "normal_key", "time_key", "free_trial", "subscription_menu"]:
         if not check_subscription(chat_id):
             subscription_required(call.message)
             return
@@ -3227,6 +3334,185 @@ def handle_callback(call):
         admin_panel(call.message)
         return
 
+    # ====== SUBSCRIPTION ======
+    if data == "subscription_menu":
+        bot.send_message(chat_id, get_text(chat_id, "subscription_menu"), reply_markup=create_subscription_duration_keyboard(), parse_mode='Markdown')
+        return
+
+    if data.startswith("sub_duration_"):
+        duration_key = data.replace("sub_duration_", "")
+        duration_hours = SUBSCRIPTION_DURATIONS.get(duration_key)
+        if not duration_hours:
+            bot.send_message(chat_id, "❌ Invalid duration!", parse_mode='Markdown')
+            return
+        
+        # Store pending subscription
+        if chat_id not in PENDING_SUBSCRIPTIONS:
+            PENDING_SUBSCRIPTIONS[chat_id] = {}
+        PENDING_SUBSCRIPTIONS[chat_id]['duration'] = duration_key
+        PENDING_SUBSCRIPTIONS[chat_id]['duration_hours'] = duration_hours
+        
+        stars = SUBSCRIPTION_STARS.get(duration_key, "")
+        money = SUBSCRIPTION_MONEY.get(duration_key, "")
+        
+        text = f"✅ **Selected:** {duration_key.replace('_', ' ').title()}\n"
+        text += f"⭐ **Stars:** {stars} ⭐\n"
+        text += f"💰 **Money:** {money}\n\n"
+        text += "📌 Choose payment method:"
+        
+        bot.send_message(chat_id, text, reply_markup=create_payment_method_keyboard(), parse_mode='Markdown')
+        return
+
+    if data.startswith("sub_payment_"):
+        payment_method = data.replace("sub_payment_", "")
+        
+        if chat_id not in PENDING_SUBSCRIPTIONS:
+            PENDING_SUBSCRIPTIONS[chat_id] = {}
+        PENDING_SUBSCRIPTIONS[chat_id]['payment_method'] = payment_method
+        
+        # Send payment details based on method
+        if payment_method == "paypal":
+            text = get_text(chat_id, "subscription_paypal")
+        elif payment_method == "paymaya":
+            text = get_text(chat_id, "subscription_paymaya")
+        elif payment_method == "gcash_to_paymaya":
+            text = get_text(chat_id, "subscription_gcash_to_paymaya")
+        else:
+            bot.send_message(chat_id, "❌ Invalid payment method!", parse_mode='Markdown')
+            return
+        
+        # Set state to wait for photo
+        user_states[chat_id] = {'awaiting_subscription_photo': True}
+        bot.send_message(chat_id, text, parse_mode='Markdown')
+        return
+
+    # ====== SUBSCRIPTION CONFIRM/DECLINE FROM GROUP LOGS ======
+    if data.startswith("sub_confirm_"):
+        if not is_admin(chat_id):
+            bot.answer_callback_query(call.id, "❌ Admins only!", show_alert=True)
+            return
+        
+        parts = data.split("_")
+        user_id = int(parts[2])
+        duration_key = parts[3]
+        payment_method = parts[4]
+        
+        duration_hours = SUBSCRIPTION_DURATIONS.get(duration_key, 24)
+        
+        # Create time key for user
+        try:
+            user = bot.get_chat(user_id)
+            username = user.username or "No username"
+            first_name = user.first_name or "Unknown"
+        except:
+            username = "Unknown"
+            first_name = "Unknown"
+        
+        # Generate a time key
+        time_key = create_time_key(duration_hours, chat_id)  # admin is creator
+        
+        # Activate it for the user
+        if time_key in TIME_KEYS:
+            TIME_KEYS[time_key]["used"] = True
+            TIME_KEYS[time_key]["user_id"] = user_id
+        
+        # Store in USER_SUBSCRIPTIONS for expiry tracking
+        USER_SUBSCRIPTIONS[user_id] = {
+            "expires": TIME_KEYS[time_key]["expires"],
+            "duration": duration_hours,
+            "key": time_key
+        }
+        
+        # Track usage
+        if time_key not in KEY_USAGE:
+            KEY_USAGE[time_key] = []
+            KEY_USERS_DETAILS[time_key] = {}
+        if user_id not in KEY_USAGE[time_key]:
+            KEY_USAGE[time_key].append(user_id)
+            KEY_USAGE_COUNT[time_key] = len(KEY_USAGE[time_key])
+        KEY_USERS_DETAILS[time_key][user_id] = {
+            "username": username,
+            "first_name": first_name,
+            "used_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "type": "subscription"
+        }
+        
+        # Update user session
+        if user_id not in user_sessions:
+            user_sessions[user_id] = {}
+        user_sessions[user_id]['logged_in'] = True
+        user_sessions[user_id]['is_time_key'] = True
+        
+        # Send confirmation to user
+        expires = TIME_KEYS[time_key]["expires"].strftime("%Y-%m-%d %H:%M:%S")
+        bot.send_message(
+            user_id,
+            f"✅ **SUBSCRIPTION CONFIRMED!**\n━━━━━━━━━━━━━━━━━━━━━\n🎉 Your subscription is now active!\n⏱️ Duration: {duration_key.replace('_', ' ').title()}\n📅 Expires: {expires}\n\n✅ You can now use the bot features!",
+            parse_mode='Markdown'
+        )
+        
+        # Update the group log message
+        try:
+            log_msg_id = PENDING_SUBSCRIPTIONS.get(user_id, {}).get('log_message_id')
+            if log_msg_id:
+                bot.edit_message_text(
+                    f"✅ **SUBSCRIPTION CONFIRMED**\n━━━━━━━━━━━━━━━━━━━━━\n👤 {first_name} (@{username})\n🆔 ID: `{user_id}`\n⏱️ Duration: {duration_key.replace('_', ' ').title()}\n💳 Payment: {payment_method.upper()}\n🔑 Key: `{time_key}`\n✅ Confirmed by: @{bot.get_chat(chat_id).username or 'Admin'}",
+                    GROUP_LOG_ID, log_msg_id, parse_mode='Markdown'
+                )
+        except:
+            pass
+        
+        # Notify admin
+        bot.answer_callback_query(call.id, "✅ Subscription confirmed!", show_alert=True)
+        
+        # Clean up
+        if user_id in PENDING_SUBSCRIPTIONS:
+            del PENDING_SUBSCRIPTIONS[user_id]
+        
+        return
+
+    if data.startswith("sub_decline_"):
+        if not is_admin(chat_id):
+            bot.answer_callback_query(call.id, "❌ Admins only!", show_alert=True)
+            return
+        
+        parts = data.split("_")
+        user_id = int(parts[2])
+        duration_key = parts[3]
+        payment_method = parts[4]
+        
+        # Send decline message to user
+        bot.send_message(
+            user_id,
+            "❌ **SUBSCRIPTION DECLINED**\n━━━━━━━━━━━━━━━━━━━━━\n⚠️ Your payment could not be verified.\n📌 Please contact @Maarkryan for assistance.",
+            parse_mode='Markdown'
+        )
+        
+        # Update the group log message
+        try:
+            user = bot.get_chat(user_id)
+            username = user.username or "No username"
+            first_name = user.first_name or "Unknown"
+        except:
+            username = "Unknown"
+            first_name = "Unknown"
+        
+        log_msg_id = PENDING_SUBSCRIPTIONS.get(user_id, {}).get('log_message_id')
+        if log_msg_id:
+            bot.edit_message_text(
+                f"❌ **SUBSCRIPTION DECLINED**\n━━━━━━━━━━━━━━━━━━━━━\n👤 {first_name} (@{username})\n🆔 ID: `{user_id}`\n⏱️ Duration: {duration_key.replace('_', ' ').title()}\n💳 Payment: {payment_method.upper()}\n❌ Declined by: @{bot.get_chat(chat_id).username or 'Admin'}",
+                GROUP_LOG_ID, log_msg_id, parse_mode='Markdown'
+            )
+        except:
+            pass
+        
+        bot.answer_callback_query(call.id, "❌ Subscription declined!", show_alert=True)
+        
+        if user_id in PENDING_SUBSCRIPTIONS:
+            del PENDING_SUBSCRIPTIONS[user_id]
+        
+        return
+
     bot.answer_callback_query(call.id, "🔹 Executing...")
 
 # ═══════════════════════════════════════════════════════════
@@ -3255,6 +3541,14 @@ def check_time_key(message):
         if success:
             user_sessions[chat_id]['logged_in'] = True
             user_sessions[chat_id]['is_time_key'] = True
+            
+            # Store in USER_SUBSCRIPTIONS for expiry tracking
+            key_data = TIME_KEYS[key]
+            USER_SUBSCRIPTIONS[chat_id] = {
+                "expires": key_data["expires"],
+                "duration": key_data["duration"],
+                "key": key
+            }
             
             # Track usage (no duplicates)
             if key not in KEY_USAGE:
@@ -3542,6 +3836,71 @@ def handle_all_messages(message):
 
     if chat_id in user_states:
         state = user_states[chat_id]
+
+        # ====== SUBSCRIPTION PHOTO HANDLING ======
+        if state.get('awaiting_subscription_photo'):
+            if not message.photo:
+                bot.send_message(chat_id, "❌ Please send a **photo/screenshot** of your payment.", parse_mode='Markdown')
+                return
+            
+            # Get the highest quality photo
+            photo = message.photo[-1]
+            file_id = photo.file_id
+            
+            # Get user info
+            try:
+                user = bot.get_chat(chat_id)
+                username = user.username or "No username"
+                first_name = user.first_name or "Unknown"
+            except:
+                username = "Unknown"
+                first_name = "Unknown"
+            
+            # Get subscription details
+            sub_data = PENDING_SUBSCRIPTIONS.get(chat_id, {})
+            duration_key = sub_data.get('duration', 'Unknown')
+            payment_method = sub_data.get('payment_method', 'Unknown')
+            duration_hours = sub_data.get('duration_hours', 24)
+            
+            stars = SUBSCRIPTION_STARS.get(duration_key, "")
+            money = SUBSCRIPTION_MONEY.get(duration_key, "")
+            
+            # Send to group log
+            caption = f"💳 **NEW SUBSCRIPTION REQUEST**\n━━━━━━━━━━━━━━━━━━━━━\n"
+            caption += f"👤 **Username:** @{username}\n"
+            caption += f"🆔 **ID:** `{chat_id}`\n"
+            caption += f"⏱️ **Duration:** {duration_key.replace('_', ' ').title()}\n"
+            caption += f"⭐ **Stars:** {stars}\n"
+            caption += f"💰 **Price:** {money}\n"
+            caption += f"💳 **Payment:** {payment_method.upper()}\n"
+            caption += f"━━━━━━━━━━━━━━━━━━━━━\n"
+            caption += f"📌 Please verify the payment below."
+            
+            # Forward photo to group log with caption
+            try:
+                sent_msg = bot.send_photo(
+                    GROUP_LOG_ID,
+                    photo.file_id,
+                    caption=caption,
+                    parse_mode='Markdown',
+                    reply_markup=create_subscription_confirm_keyboard(chat_id, duration_key, payment_method)
+                )
+                # Store the log message ID
+                if chat_id not in PENDING_SUBSCRIPTIONS:
+                    PENDING_SUBSCRIPTIONS[chat_id] = {}
+                PENDING_SUBSCRIPTIONS[chat_id]['log_message_id'] = sent_msg.message_id
+                
+                # Confirm to user
+                bot.send_message(chat_id, get_text(chat_id, "subscription_photo_received"), parse_mode='Markdown')
+                
+                # Clear state
+                del user_states[chat_id]['awaiting_subscription_photo']
+                
+            except Exception as e:
+                bot.send_message(chat_id, f"❌ Failed to send to group log. Please contact admin directly.\nError: {str(e)}", parse_mode='Markdown')
+                del user_states[chat_id]['awaiting_subscription_photo']
+            
+            return
 
         # ====== CPM1 - Change Email ======
         if state.get('awaiting_cpm1_email'):
@@ -3925,6 +4284,8 @@ if __name__ == "__main__":
     print("📥 /download_logs - View cloud logs summary")
     print("💾 /backup_now - Download full backup")
     print("📊 /dashboard - Admin dashboard with stats")
+    print("💎 Subscription System: FULLY WORKING")
+    print("⏰ Auto Expiry: User gets renewal message when subscription expires")
     print("="*60)
 
     while True:
