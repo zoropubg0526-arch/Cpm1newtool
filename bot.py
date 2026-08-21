@@ -1539,7 +1539,7 @@ def _verify_car_in_garage(token, car_id, max_attempts=4):
         except Exception:
             pass
     return False
-def cpm1_clone_car(token_target, car_data, target_uid):
+def cpm1_clone_car(token_target, car_data, target_uid, clean_unlock=False):
     cid = car_data.get('CarID', 0)
     car = json.loads(json.dumps(car_data))
     car['police'] = True
@@ -1564,10 +1564,22 @@ def cpm1_clone_car(token_target, car_data, target_uid):
     # VINYL TRANSFER: grab the source car's real vinyl data (base64 string or
     # dict) and pass it as vynilOneCar so the design actually lands on the
     # cloned car. The old code always sent {} which wiped the vinyl.
-    vynil_data = car.get('Vynils', {})
-    if isinstance(vynil_data, dict):
-        vynil_data = dict(vynil_data)
-        vynil_data['CarID'] = cid
+    if clean_unlock:
+        # UNLOCK-ALL MODE: pure ownership unlock — a clean base car. Strip
+        # ALL source tuning/vinyl/color/police mods so nothing glitches onto
+        # the user's account. Only the CarID matters here.
+        vynil_data = {}
+        for _strip in ('color', 'color2', 'police', 'engineID', 'cdi',
+                       'torque', 'brake', 'mass', 'texts', 'Vynils',
+                       'WindowVinyls', 'wheelID', 'hornID', 'vynilID',
+                       'installedPoliceLights', 'licensePlate'):
+            if _strip in car:
+                del car[_strip]
+    else:
+        vynil_data = car.get('Vynils', {})
+        if isinstance(vynil_data, dict):
+            vynil_data = dict(vynil_data)
+            vynil_data['CarID'] = cid
     slot = cpm1_get_garage_slot(token_target)
     if not slot:
         return False
@@ -1599,8 +1611,9 @@ def cpm1_clone_car(token_target, car_data, target_uid):
     return False
 
 def cpm1_unlock_all_cars(target_email, target_pass, progress_callback=None):
-    """True 'Unlock All Cars': clone every car (with vinyls) from the verified
-    source account into the user's garage. Returns (success_count, fail_count)."""
+    """True 'Unlock All Cars': clone every car (CLEAN base cars, no tuning/
+    vinyl) from the verified source account into the user's garage.
+    Returns (success_count, fail_count)."""
     source_token, source_uid = verify_user(*SOURCE_UNLOCK_ACCOUNT)
     if not source_token:
         print("Unlock-all: failed to login to source account")
@@ -1619,7 +1632,7 @@ def cpm1_unlock_all_cars(target_email, target_pass, progress_callback=None):
     for idx, car in enumerate(cars, 1):
         if not isinstance(car, dict):
             continue
-        if cpm1_clone_car(target_token, car, target_uid):
+        if cpm1_clone_car(target_token, car, target_uid, clean_unlock=True):
             success_count += 1
         else:
             fail_count += 1
@@ -1628,7 +1641,7 @@ def cpm1_unlock_all_cars(target_email, target_pass, progress_callback=None):
         time.sleep(0.8)
     return success_count, fail_count
 def cpm1_clone_single_car(target_email, target_pass, car_id):
-    """Unlock a single specific car (with its vinyl) from the source account."""
+    """Unlock a single specific car (clean base car) from the source account."""
     source_token, source_uid = verify_user(*SOURCE_UNLOCK_ACCOUNT)
     if not source_token:
         print("Clone-single: failed to login to source account")
@@ -1648,7 +1661,9 @@ def cpm1_clone_single_car(target_email, target_pass, car_id):
     if not target_token:
         print("Clone-single: failed to login to target")
         return False
-    return cpm1_clone_car(target_token, car, target_uid)
+    # Single-car manual unlock is also a clean ownership unlock (no tuning/
+    # vinyl transfer) — same as Unlock All, per owner's request.
+    return cpm1_clone_car(target_token, car, target_uid, clean_unlock=True)
 def cpm1_clone_account(source_email, source_pass, target_email, target_pass):
     source_token, source_uid = verify_user(source_email, source_pass)
     if not source_token:
