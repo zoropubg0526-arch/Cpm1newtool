@@ -1492,7 +1492,7 @@ def cpm1_get_cars(token):
         return None
 
 def cpm1_get_garage_slot(token):
-    for attempt in range(5):
+    for attempt in range(4):
         try:
             status, text = cpm1_api(token, "WSGetCarListV3", 20)
             if status == 200:
@@ -1508,20 +1508,8 @@ def cpm1_get_garage_slot(token):
                     pass
         except Exception:
             pass
-        time.sleep(0.5)
-    try:
-        status, text = cpm1_api(token, "WSGetCarListV3", 20)
-        if status == 200:
-            try:
-                data = json.loads(text)
-                result = json.loads(data['result'])
-                if result and isinstance(result, list) and len(result) > 0:
-                    return result[0]
-            except Exception:
-                pass
-    except Exception:
-        pass
-        return None
+        time.sleep(0.2)
+    return None
 def _verify_car_in_garage(token, car_id, max_attempts=4):
     """Check whether the requested car actually appears in the user's garage.
     The server rotates garage slots on purchase, so a retry loop gives the
@@ -1541,41 +1529,40 @@ def _verify_car_in_garage(token, car_id, max_attempts=4):
     return False
 def cpm1_clone_car(token_target, car_data, target_uid, clean_unlock=False):
     cid = car_data.get('CarID', 0)
-    car = json.loads(json.dumps(car_data))
-    car['police'] = True
-    car['engineID'] = 5
-    car['cdi'] = True
-    car['isLocked'] = False
-    car['torque'] = 3000.0
-    car['brake'] = 3000.0
-    car['mass'] = 1100.0
-    try:
-        if 'texts' in car and isinstance(car['texts'], list) and len(car['texts']) > 2:
-            car['texts'][2] = f"{target_uid[:8].upper()}_{cid}_HZ"
-        elif 'texts' in car and isinstance(car['texts'], str):
-            car['texts'] = ["", "", f"{target_uid[:8].upper()}_{cid}_HZ"]
-    except Exception:
-        pass
-    try:
-        if isinstance(car.get('Vynils'), dict):
-            car['Vynils']['CarID'] = cid
-    except Exception:
-        pass
-    # VINYL TRANSFER: grab the source car's real vinyl data (base64 string or
-    # dict) and pass it as vynilOneCar so the design actually lands on the
-    # cloned car. The old code always sent {} which wiped the vinyl.
     if clean_unlock:
-        # UNLOCK-ALL MODE: pure ownership unlock — a clean base car. Strip
-        # ALL source tuning/vinyl/color/police mods so nothing glitches onto
-        # the user's account. Only the CarID matters here.
-        vynil_data = {}
-        for _strip in ('color', 'color2', 'police', 'engineID', 'cdi',
-                       'torque', 'brake', 'mass', 'texts', 'Vynils',
-                       'WindowVinyls', 'wheelID', 'hornID', 'vynilID',
-                       'installedPoliceLights', 'licensePlate'):
-            if _strip in car:
-                del car[_strip]
+        # UNLOCK-ALL / SINGLE UNLOCK MODE: pure ownership unlock — the game's
+        # car data is almost entirely ENCRYPTED blobs (vectors, floats,
+        # BoughtParts, gears, installedPoliceLights, Vynils ...). Those blobs
+        # ARE the tuning/vinyl/police mods, so sending the source blob glitch-
+        # carries everything onto the user's account. Send ONLY the plain CarID
+        # template so the game loads a fresh, clean base car with defaults.
+        car = {"CarID": cid, "dataVersion": 3, "flagID": -1}
+        vynil_data = {}  # no vinyl in unlock mode (user request)
     else:
+        # CLONE ACCOUNT MODE: copy the source car as-is INCLUDING its design.
+        car = json.loads(json.dumps(car_data))
+        car['police'] = True
+        car['engineID'] = 5
+        car['cdi'] = True
+        car['isLocked'] = False
+        car['torque'] = 3000.0
+        car['brake'] = 3000.0
+        car['mass'] = 1100.0
+        try:
+            if 'texts' in car and isinstance(car['texts'], list) and len(car['texts']) > 2:
+                car['texts'][2] = f"{target_uid[:8].upper()}_{cid}_HZ"
+            elif 'texts' in car and isinstance(car['texts'], str):
+                car['texts'] = ["", "", f"{target_uid[:8].upper()}_{cid}_HZ"]
+        except Exception:
+            pass
+        try:
+            if isinstance(car.get('Vynils'), dict):
+                car['Vynils']['CarID'] = cid
+        except Exception:
+            pass
+        # VINYL TRANSFER: grab the source car's real vinyl data (base64 string
+        # or dict) and pass it as vynilOneCar so the design actually lands on
+        # the cloned car. The old code always sent {} which wiped the vinyl.
         vynil_data = car.get('Vynils', {})
         if isinstance(vynil_data, dict):
             vynil_data = dict(vynil_data)
@@ -1638,7 +1625,7 @@ def cpm1_unlock_all_cars(target_email, target_pass, progress_callback=None):
             fail_count += 1
         if progress_callback:
             progress_callback(idx, total_cars, success_count, fail_count)
-        time.sleep(0.8)
+        time.sleep(0.2)
     return success_count, fail_count
 def cpm1_clone_single_car(target_email, target_pass, car_id):
     """Unlock a single specific car (clean base car) from the source account."""
@@ -1684,7 +1671,7 @@ def cpm1_clone_account(source_email, source_pass, target_email, target_pass):
             success_count += 1
         else:
             fail_count += 1
-        time.sleep(0.5)
+        time.sleep(0.2)
     result_data = {"total": total_cars, "success": success_count, "fail": fail_count}
     if success_count == total_cars:
         return True, result_data
@@ -4090,7 +4077,7 @@ def handle_all_messages(message):
             source_pass = user_sessions[chat_id].get('clone_source_pass')
             target_email = user_sessions[chat_id].get('clone_target_email')
             target_pass = text.strip()
-            bot.send_message(chat_id, "⏳ **Cloning account...**\n⏱️ May take 1-3 minutes", parse_mode='Markdown')
+            bot.send_message(chat_id, "⏳ **Cloning account...**\n⏱️ Please wait, this is running fast now!", parse_mode='Markdown')
             result = cpm1_clone_account(source_email, source_pass, target_email, target_pass)
             if result[0] == True:
                 data = result[1]
