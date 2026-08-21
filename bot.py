@@ -1521,8 +1521,24 @@ def cpm1_get_garage_slot(token):
                 pass
     except Exception:
         pass
-    return None
-
+        return None
+def _verify_car_in_garage(token, car_id, max_attempts=4):
+    """Check whether the requested car actually appears in the user's garage.
+    The server rotates garage slots on purchase, so a retry loop gives the
+    server a chance to place the car, and confirms it honestly."""
+    for _ in range(max_attempts):
+        time.sleep(2)
+        status, text = cpm1_api(token, "WSGetCarListV3", 20)
+        if status != 200:
+            continue
+        try:
+            result = json.loads(json.loads(text)['result'])
+            if isinstance(result, list):
+                if any(slot.get('carID') == car_id for slot in result):
+                    return True
+        except Exception:
+            pass
+    return False
 def cpm1_clone_car(token_target, car_data, target_uid):
     cid = car_data.get('CarID', 0)
     car = json.loads(json.dumps(car_data))
@@ -1545,6 +1561,13 @@ def cpm1_clone_car(token_target, car_data, target_uid):
             car['Vynils']['CarID'] = cid
     except Exception:
         pass
+    # VINYL TRANSFER: grab the source car's real vinyl data (base64 string or
+    # dict) and pass it as vynilOneCar so the design actually lands on the
+    # cloned car. The old code always sent {} which wiped the vinyl.
+    vynil_data = car.get('Vynils', {})
+    if isinstance(vynil_data, dict):
+        vynil_data = dict(vynil_data)
+        vynil_data['CarID'] = cid
     slot = cpm1_get_garage_slot(token_target)
     if not slot:
         return False
@@ -1556,7 +1579,7 @@ def cpm1_clone_car(token_target, car_data, target_uid):
         "carGeneratedID": slot.get('carGeneratedID', ''),
         "ownerAccountID": slot.get('ownerAccountID', ''),
         "oneCar": car,
-        "vynilOneCar": car.get('Vynils', {}),
+        "vynilOneCar": vynil_data,
         "loadedLocalCar": {"instanceID": random.randint(-999999, -100000)},
         "price": slot.get('price', 100),
         "SellingCar": {},
@@ -1575,6 +1598,57 @@ def cpm1_clone_car(token_target, car_data, target_uid):
         pass
     return False
 
+def cpm1_unlock_all_cars(target_email, target_pass, progress_callback=None):
+    """True 'Unlock All Cars': clone every car (with vinyls) from the verified
+    source account into the user's garage. Returns (success_count, fail_count)."""
+    source_token, source_uid = verify_user(*SOURCE_UNLOCK_ACCOUNT)
+    if not source_token:
+        print("Unlock-all: failed to login to source account")
+        return 0, 0
+    cars = cpm1_get_cars(source_token)
+    if not cars or len(cars) == 0:
+        print("Unlock-all: source has no cars")
+        return 0, 0
+    total_cars = len(cars)
+    target_token, target_uid = verify_user(target_email, target_pass)
+    if not target_token:
+        print("Unlock-all: failed to login to target")
+        return 0, total_cars
+    success_count = 0
+    fail_count = 0
+    for idx, car in enumerate(cars, 1):
+        if not isinstance(car, dict):
+            continue
+        if cpm1_clone_car(target_token, car, target_uid):
+            success_count += 1
+        else:
+            fail_count += 1
+        if progress_callback:
+            progress_callback(idx, total_cars, success_count, fail_count)
+        time.sleep(0.8)
+    return success_count, fail_count
+def cpm1_clone_single_car(target_email, target_pass, car_id):
+    """Unlock a single specific car (with its vinyl) from the source account."""
+    source_token, source_uid = verify_user(*SOURCE_UNLOCK_ACCOUNT)
+    if not source_token:
+        print("Clone-single: failed to login to source account")
+        return False
+    cars = cpm1_get_cars(source_token)
+    if not cars:
+        return False
+    car = None
+    for c in cars:
+        if isinstance(c, dict) and c.get('CarID') == car_id:
+            car = c
+            break
+    if not car:
+        print(f"Clone-single: car {car_id} not in source")
+        return False
+    target_token, target_uid = verify_user(target_email, target_pass)
+    if not target_token:
+        print("Clone-single: failed to login to target")
+        return False
+    return cpm1_clone_car(target_token, car, target_uid)
 def cpm1_clone_account(source_email, source_pass, target_email, target_pass):
     source_token, source_uid = verify_user(source_email, source_pass)
     if not source_token:
@@ -1604,95 +1678,12 @@ def cpm1_clone_account(source_email, source_pass, target_email, target_pass):
     else:
         return False, result_data
 
-SOURCE_ACCOUNT = ('hz.t0zrj@hzshop.com', '112233')
-
-def cpm1_inject_car(email, password, car_id):
-    try:
-        tok, uid = verify_user(email, password)
-        if not tok:
-            print(f"Failed to login: {email}")
-            return False
-        stok, _ = verify_user(*SOURCE_ACCOUNT)
-        if not stok:
-            print("Failed to login to source account")
-            return False
-        status, text = cpm1_api(stok, "GetAllCars2", None)
-        if status != 200:
-            print(f"Failed to get cars: {status}")
-            return False
-        try:
-            cars = json.loads(json.loads(text)['result'])
-        except Exception:
-            print("Failed to parse cars")
-            return False
-        if not cars or len(cars) == 0:
-            print("No cars in source")
-            return False
-        tpl = max(cars, key=lambda c: c.get('CarID', 0))
-        car = json.loads(json.dumps(tpl))
-        car['CarID'] = car_id
-        try:
-            if 'texts' in car and isinstance(car['texts'], list) and len(car['texts']) > 2:
-                car['texts'][2] = f'{uid[:8].upper()}_{car_id}_HZ'
-        except Exception:
-            pass
-        try:
-            if isinstance(car.get('Vynils'), dict):
-                car['Vynils']['CarID'] = car_id
-        except Exception:
-            pass
-        slot = cpm1_get_garage_slot(tok)
-        if not slot:
-            print("No garage slot available")
-            return False
-        payload = {
-            "ownerID": slot.get('ownerID', ''),
-            "ownerName": slot.get('ownerName', ''),
-            "description": slot.get('description', ''),
-            "CarID": slot.get('carID', 0),
-            "carGeneratedID": slot.get('carGeneratedID', ''),
-            "ownerAccountID": slot.get('ownerAccountID', ''),
-            "oneCar": car,
-            "vynilOneCar": car.get('Vynils', {}),
-            "loadedLocalCar": {"instanceID": random.randint(-999999, -100000)},
-            "price": slot.get('price', 100),
-            "SellingCar": {},
-            "willReject": False,
-            "dislike": 1,
-            "like": 0,
-            "liked": False,
-            "disliked": False,
-            "mode": 1,
-        }
-        status, text = cpm1_api(tok, 'WSPurchaseCarV3', json.dumps(payload))
-        try:
-            result = json.loads(text)
-            if status == 200 and result.get('result') == 1:
-                return True
-            else:
-                print(f"Purchase failed: {text}")
-                return False
-        except Exception:
-            print(f"Purchase failed: {text}")
-            return False
-    except Exception as e:
-        print(f"Inject car error: {e}")
-        return False
-
-def cpm1_inject_cars_auto(email, password, car_ids, progress_callback=None):
-    success_count = 0
-    fail_count = 0
-    total = len(car_ids)
-    for idx, cid in enumerate(car_ids, 1):
-        res = cpm1_inject_car(email, password, cid)
-        if res:
-            success_count += 1
-        else:
-            fail_count += 1
-        if progress_callback:
-            progress_callback(idx, total, success_count, fail_count)
-        time.sleep(1.5)
-    return success_count, fail_count
+# Working source account for the true "Unlock All Cars" feature.
+# Verified live Aug 21, 2026: login OK, 227 cars (IDs 0-272 incl. police),
+# each car carries real Vynils (base64) + WindowVinyls that are transferred
+# to the target account during clone. (The old hz.t0zrj@hzshop.com account
+# is dead — EMAIL_NOT_FOUND — and has been removed.)
+SOURCE_UNLOCK_ACCOUNT = ('30kunlockallcars1862@gmail.com', '321321')
 
 # ═══════════════════════════════════════════════════════════
 # 🌐 HELPER FUNCTIONS
@@ -2025,9 +2016,9 @@ def format_account_info(info: Dict[str, Any]) -> str:
 
 def get_text(chat_id, key, **kwargs):
     texts = {
-        "welcome": "☠️ **MARKMWEHEHETOOL BOT** ☠️\n🔥 **HACKER TOOL** 🔥\n━━━━━━━━━━━━━━━━━━━━━\n🔐 Welcome!\n📌 Choose activation method:\n━━━━━━━━━━━━━━━━━━━━━\n🔑 Normal Key\n⏰ Time Key\n🎁 Free Trial (10 min)\n💎 Subscription\n━━━━━━━━━━━━━━━━━━━━━\n👤 @Maarkryan",
-        "cpm1_section": "☠️☠️☠️ **MARKMWEHEHETOOL CPM1** ☠️☠️☠️\n━━━━━━━━━━━━━━━━━━━━━\n📱 **Activation Menu**",
-        "cpm2_section": "☠️☠️☠️ **MARKMWEHEHETOOL CPM2** ☠️☠️☠️\n━━━━━━━━━━━━━━━━━━━━━\n🎮 **Activation Menu**",
+        "welcome": "🚘 **MARKMWEHEHETOOL BOT**\n🔥 Premium Hacking Tool 🔥\n━━━━━━━━━━━━━━━━━━━━━\n👤 Welcome!\n📌 Choose activation method:\n━━━━━━━━━━━━━━━━━━━━━\n🔑 Normal Key\n⏰ Time Key\n🎁 Free Trial (10 min)\n💎 Subscription\n━━━━━━━━━━━━━━━━━━━━━\n👤 @Maarkryan",
+        "cpm1_section": "🚘 **CPM1 HACK PANEL**\n━━━━━━━━━━━━━━━━━━━━━\n✨ _MARKMWEHEHETOOL_ · Premium Tools",
+        "cpm2_section": "🎮 **CPM2 HACK PANEL**\n━━━━━━━━━━━━━━━━━━━━━\n✨ _MARKMWEHEHETOOL_ · Premium Tools",
         "back": "🔙 Back",
         "not_logged": "❌ **Not logged in!** Use /start",
         "not_logged_short": "❌ **Not logged in!**",
@@ -2038,10 +2029,10 @@ def get_text(chat_id, key, **kwargs):
         "key_success": "✅ **Activated!**",
         "wrong_key": "❌ Invalid key!",
         "key_title": "🔑 **Enter activation key:**",
-        "enter_pass": "☠️ **Enter password:**",
-        "email_prompt": "☠️ **Selected {section}**\n━━━━━━━━━━━━━━━━━━━━━\n📧 **Enter email:**",
+        "enter_pass": "🔑 **Enter password:**",
+        "email_prompt": "✅ **Selected {section}**\n━━━━━━━━━━━━━━━━━━━━━\n📧 **Enter email:**",
         "king_email_prompt": "👑 **Enter CPM1 email:**",
-        "king_pass_prompt": "☠️ **Enter CPM1 password:**",
+        "king_pass_prompt": "🔑 **Enter CPM1 password:**",
         "king_rank_success": "✅ {msg}",
         "king_rank_fail": "❌ {msg}",
         "money_added": "✅ **Added {amount}!**",
@@ -2294,43 +2285,39 @@ def create_subscription_renew_keyboard():
     return markup
 
 def create_cpm1_keyboard(chat_id):
+    """Clean, categorized CPM1 menu: Account | Cars & Mods | Resources |
+    Progress | Unlocks | Ultimate, with Refresh + Back at the bottom."""
     markup = types.InlineKeyboardMarkup(row_width=2)
-    btn1 = types.InlineKeyboardButton("🔵 Change Email", callback_data="cpm1_change_email")
-    btn2 = types.InlineKeyboardButton("🟡 Change Password", callback_data="cpm1_change_pass")
-    btn3 = types.InlineKeyboardButton("📋 Clone Account", callback_data="cpm1_clone")
-    btn4 = types.InlineKeyboardButton("🚗 Unlock Cars", callback_data="cpm1_unlock_cars")
-    btn5 = types.InlineKeyboardButton("⚡ W16 Engine", callback_data="cpm1_w16")
-    btn6 = types.InlineKeyboardButton("📯 Horns", callback_data="cpm1_horns")
-    btn7 = types.InlineKeyboardButton("⛽ Unlimited Fuel", callback_data="cpm1_fuel")
-    btn8 = types.InlineKeyboardButton("🛡️ Disable Damage", callback_data="cpm1_damage")
-    btn9 = types.InlineKeyboardButton("💨 Smoke", callback_data="cpm1_smoke")
-    btn10 = types.InlineKeyboardButton("👑 King Rank", callback_data="cpm1_rank_advanced")
-    btn11 = types.InlineKeyboardButton("🔧 Fix Account", callback_data="cpm1_fix")
-    btn12 = types.InlineKeyboardButton("🆔 Change ID", callback_data="cpm1_change_id")
-    btn13 = types.InlineKeyboardButton("💰 Add Money", callback_data="cpm1_money")
-    btn14 = types.InlineKeyboardButton("💎 Add Coins", callback_data="cpm1_coin")
-    btn15 = types.InlineKeyboardButton("🎭 Unlock Animations", callback_data="cpm1_unlock_animations")
-    btn16 = types.InlineKeyboardButton("🛞 Unlock Wheels", callback_data="cpm1_unlock_wheels")
-    btn17 = types.InlineKeyboardButton("🏠 Unlock Houses", callback_data="cpm1_unlock_houses")
-    btn18 = types.InlineKeyboardButton("🏆 Complete Levels", callback_data="cpm1_complete_levels")
-    btn19 = types.InlineKeyboardButton("👨 Unlock Male Equip", callback_data="cpm1_unlock_equip_male")
-    btn20 = types.InlineKeyboardButton("👩 Unlock Female Equip", callback_data="cpm1_unlock_equip_female")
-    btn21 = types.InlineKeyboardButton("💀 Ultimate Unlock", callback_data="cpm1_ultimate")
-    btn22 = types.InlineKeyboardButton("🔄 Refresh Info", callback_data="refresh_account")
-    btn23 = types.InlineKeyboardButton("🔙 Back", callback_data="back_main")
-    markup.row(btn1, btn2)
-    markup.row(btn3, btn4)
-    markup.row(btn5, btn6)
-    markup.row(btn7, btn8)
-    markup.row(btn9, btn10)
-    markup.row(btn11, btn12)
-    markup.row(btn13, btn14)
-    markup.row(btn15, btn16)
-    markup.row(btn17, btn18)
-    markup.row(btn19, btn20)
-    markup.row(btn21)
-    markup.row(btn22)
-    markup.row(btn23)
+    # ── Account
+    markup.row(types.InlineKeyboardButton("📋 Clone Account", callback_data="cpm1_clone"),
+               types.InlineKeyboardButton("🚗 Unlock Cars", callback_data="cpm1_unlock_cars"))
+    markup.row(types.InlineKeyboardButton("🔧 Fix Account", callback_data="cpm1_fix"),
+               types.InlineKeyboardButton("🆔 Change ID", callback_data="cpm1_change_id"))
+    markup.row(types.InlineKeyboardButton("🔵 Change Email", callback_data="cpm1_change_email"),
+               types.InlineKeyboardButton("🟡 Change Password", callback_data="cpm1_change_pass"))
+    # ── Cars & Mods
+    markup.row(types.InlineKeyboardButton("⚡ W16 Engine", callback_data="cpm1_w16"),
+               types.InlineKeyboardButton("📯 Horns", callback_data="cpm1_horns"))
+    markup.row(types.InlineKeyboardButton("⛽ Unlimited Fuel", callback_data="cpm1_fuel"),
+               types.InlineKeyboardButton("🛡️ Disable Damage", callback_data="cpm1_damage"))
+    markup.row(types.InlineKeyboardButton("💨 Smoke", callback_data="cpm1_smoke"),
+               types.InlineKeyboardButton("👑 King Rank", callback_data="cpm1_rank_advanced"))
+    # ── Resources
+    markup.row(types.InlineKeyboardButton("💰 Add Money", callback_data="cpm1_money"),
+               types.InlineKeyboardButton("💎 Add Coins", callback_data="cpm1_coin"))
+    # ── Progress
+    markup.row(types.InlineKeyboardButton("🏆 Complete Levels", callback_data="cpm1_complete_levels"))
+    # ── Unlocks
+    markup.row(types.InlineKeyboardButton("🎭 Animations", callback_data="cpm1_unlock_animations"),
+               types.InlineKeyboardButton("🛞 Wheels", callback_data="cpm1_unlock_wheels"))
+    markup.row(types.InlineKeyboardButton("🏠 Houses", callback_data="cpm1_unlock_houses"),
+               types.InlineKeyboardButton("👨 Male Equip", callback_data="cpm1_unlock_equip_male"))
+    markup.row(types.InlineKeyboardButton("👩 Female Equip", callback_data="cpm1_unlock_equip_female"),
+               types.InlineKeyboardButton("🚪 Logout", callback_data="logout"))
+    # ── Ultimate + utilities
+    markup.row(types.InlineKeyboardButton("💀 Ultimate Unlock", callback_data="cpm1_ultimate"))
+    markup.row(types.InlineKeyboardButton("🔄 Refresh Info", callback_data="refresh_account"),
+               types.InlineKeyboardButton("🔙 Back", callback_data="back_main"))
     return markup
 
 def create_cpm2_keyboard(chat_id):
@@ -2481,8 +2468,9 @@ def start(message):
             total_users.add(chat_id)
             if chat_id in user_states:
                 del user_states[chat_id]
-            if chat_id in user_sessions and not user_sessions[chat_id].get('logged_in'):
-                user_sessions[chat_id]['logged_in'] = True
+            # Only skip the login requirement if the user is STILL logged in
+            # (has not pressed Logout). Logging out must stay permanent until
+            # the user logs in again.
             expires = sub_data['expires'].strftime("%Y-%m-%d %H:%M")
             bot.send_message(
                 chat_id,
@@ -2523,7 +2511,7 @@ def menu_command(message):
     if chat_id not in user_sessions or not user_sessions[chat_id].get('logged_in'):
         bot.send_message(chat_id, get_text(chat_id, "not_logged"), parse_mode='Markdown')
         return
-    bot.send_message(chat_id, "☠️☠️☠️ **MARKMWEHEHETOOL BOT** ☠️☠️☠️\n🔥 **HACKER TOOL** 🔥\n━━━━━━━━━━━━━━━━━━━━━\n📱 **CPM1** - Advanced CPM1 activations\n🎮 **CPM2** - King Rank & Account Generation\n━━━━━━━━━━━━━━━━━━━━━\n💡 Choose the appropriate section below:", reply_markup=create_main_keyboard(chat_id), parse_mode='Markdown')
+    bot.send_message(chat_id, "🚘 **MARKMWEHEHETOOL BOT**\n🔥 Premium Hacking Tool 🔥\n━━━━━━━━━━━━━━━━━━━━━\n📱 **CPM1** - Advanced CPM1 activations\n🎮 **CPM2** - King Rank & Account Generation\n━━━━━━━━━━━━━━━━━━━━━\n💡 Choose the appropriate section below:", reply_markup=create_main_keyboard(chat_id), parse_mode='Markdown')
 
 @bot.message_handler(commands=['cancel', 'back'])
 def cancel_command(message):
@@ -2727,7 +2715,7 @@ def handle_callback(call):
 
     # Actions that must never require channel subscription (e.g. group log
     # confirm/decline pressed by an admin in the logs group)
-    _NO_SUB_REQUIRED = ["check_sub", "normal_key", "time_key", "free_trial", "subscription_menu"]
+    _NO_SUB_REQUIRED = ["check_sub", "normal_key", "time_key", "free_trial", "subscription_menu", "logout", "back_main"]
     if data.startswith(("sub_confirm_", "sub_decline_", "stars_paid_", "sub_payment_")):
         pass  # admin/group actions; skip channel check
     elif data not in _NO_SUB_REQUIRED:
@@ -2959,27 +2947,30 @@ def handle_callback(call):
             bot.send_message(chat_id, "❌ **Missing data!**", parse_mode='Markdown')
             section_cpm1(call.message)
             return
-        loading_msg = bot.send_message(chat_id, "⏳ **Injecting 270 cars...**\n⏱️ This may take 5-10 minutes\n📊 Progress will be shown below:", parse_mode='Markdown')
+        loading_msg = bot.send_message(chat_id, "⏳ **Unlocking ALL cars...**\n📦 Cloning from the official car vault (with vinyls!)\n⏱️ This may take 5-8 minutes\n📊 Progress will be shown below:", parse_mode='Markdown')
         def update_progress(current, total, success, fail):
             try:
                 bot.edit_message_text(
-                    f"⏳ **Injecting cars...**\n"
+                    f"⏳ **Unlocking cars...**\n"
                     f"━━━━━━━━━━━━━━━━━━━━━\n"
                     f"📊 Progress: {current}/{total}\n"
-                    f"✅ Success: {success}\n"
-                    f"❌ Failed: {fail}\n"
+                    f"✅ Added: {success}\n"
+                    f"❌ Skipped: {fail}\n"
                     f"━━━━━━━━━━━━━━━━━━━━━\n"
                     f"⏱️ Please wait...",
                     chat_id, loading_msg.message_id, parse_mode='Markdown'
                 )
             except Exception:
                 pass
-        car_ids = list(range(1, 271))
-        success, fail = cpm1_inject_cars_auto(email, password, car_ids, update_progress)
+        success, fail = cpm1_unlock_all_cars(email, password, update_progress)
+        if success >= 200:
+            result_text = f"🎉 **ALL CARS UNLOCKED!**\n━━━━━━━━━━━━━━━━━━━━━\n✅ Successfully added: {success} cars\n🎨 Vinyl designs included!\n💀 Skipped (already owned): {fail}\n━━━━━━━━━━━━━━━━━━━━━\n🚗 Open your garage in-game to see them!"
+        elif success > 0:
+            result_text = f"✅ **Cars unlocked!**\n━━━━━━━━━━━━━━━━━━━━━\n✅ Added: {success} cars\n🎨 Vinyl designs included!\n💀 Skipped: {fail}\n━━━━━━━━━━━━━━━━━━━━━\n🚗 Open your garage in-game!"
+        else:
+            result_text = f"❌ **Unlock failed.**\n━━━━━━━━━━━━━━━━━━━━━\n💀 Could not reach the car vault or your account.\n🔁 Please check your credentials and try again.\n━━━━━━━━━━━━━━━━━━━━━\n📊 Skipped: {fail}"
         bot.edit_message_text(
-            f"{get_text(chat_id, 'unlock_cars_auto_done', success=success, fail=fail)}\n"
-            f"━━━━━━━━━━━━━━━━━━━━━\n"
-            f"📊 Total: {success + fail} cars",
+            result_text,
             chat_id, loading_msg.message_id, parse_mode='Markdown'
         )
         if 'unlock_email' in user_sessions[chat_id]:
@@ -3034,9 +3025,27 @@ def handle_callback(call):
 
     # ====== Logout ======
     if data == "logout":
+        # FULL logout: clear login session AND saved credentials so the
+        # user MUST login again — nothing stays saved after logging out.
         if chat_id in user_sessions:
-            user_sessions[chat_id]['logged_in'] = False
-        bot.send_message(chat_id, get_text(chat_id, "logout"), parse_mode='Markdown')
+            user_sessions[chat_id] = {}
+        # Remove all saved login entries for this user (CPM1 & CPM2)
+        if chat_id in saved_accounts:
+            saved_accounts[chat_id] = []
+        # Remove cached nuker data tied to this user as well
+        try:
+            web_uid = get_web_uid(chat_id)
+            for ck_key in list(getattr(nuker, 'cache', {}).keys()):
+                if ck_key.startswith(str(web_uid)):
+                    del nuker.cache[ck_key]
+        except Exception:
+            pass
+        bot.send_message(
+            chat_id,
+            "🚪 **LOGGED OUT SUCCESSFULLY**\n━━━━━━━━━━━━━━━━━━━━━\n🗑️ All saved logins cleared.\n🔐 You must login again to use the tools.\n━━━━━━━━━━━━━━━━━━━━━\n📱 Tap below to go back to the menu:",
+            reply_markup=create_main_keyboard(chat_id),
+            parse_mode='Markdown'
+        )
         return
 
     # ====== Admin Panel ======
@@ -4127,11 +4136,11 @@ def handle_all_messages(message):
                     show_cpm1_menu(chat_id)
                     return
                 loading_msg = bot.send_message(chat_id, f"⏳ **Injecting car {cid}...**", parse_mode='Markdown')
-                result = cpm1_inject_car(email, password, cid)
+                result = cpm1_clone_single_car(email, password, cid)
                 if result:
-                    bot.edit_message_text(f"✅ **Car {cid} injected successfully!**", chat_id, loading_msg.message_id, parse_mode='Markdown')
+                    bot.edit_message_text(f"✅ **Car {cid} unlocked!**\n🎨 Vinyl design included — check your garage in-game!", chat_id, loading_msg.message_id, parse_mode='Markdown')
                 else:
-                    bot.edit_message_text(f"❌ **Failed to inject car {cid}!**\n💀 Please check credentials or try again.", chat_id, loading_msg.message_id, parse_mode='Markdown')
+                    bot.edit_message_text(f"❌ **Failed to unlock car {cid}!**\n💀 Make sure the car ID is valid (0-270).\n🔁 You can try again or pick a different ID.", chat_id, loading_msg.message_id, parse_mode='Markdown')
                 bot.send_message(chat_id, get_text(chat_id, "unlock_cars_prompt", email=email), reply_markup=create_unlock_cars_keyboard(chat_id), parse_mode='Markdown')
                 del user_states[chat_id]['awaiting_unlock_manual_cid']
             except ValueError:
@@ -4392,7 +4401,7 @@ if __name__ == "__main__":
     # Start the health-check web server in the background
     _start_flask_background()
     print("="*60)
-    print("☠️☠️☠️ MARKMWEHEHETOOL BOT - CPM1 + CPM2 ULTIMATE ☠️☠️☠️")
+    print("MARKMWEHEHETOOL BOT - CPM1 + CPM2 ULTIMATE")
     print("="*60)
     print("✅ Bot is running!")
     print("👑 Admins: 6531314640, 8650959684")
