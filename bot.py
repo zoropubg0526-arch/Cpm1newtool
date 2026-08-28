@@ -3,12 +3,8 @@
 
 """
 ☠️☠️☠️ 𝙈𝘼𝙍𝙆𝘾𝙋𝙈1𝙏𝙊𝙊𝙇𝙎 - CPM1 ULTIMATE ☠️☠️☠️
-FULLY FIXED: 
-- Conflict 409 error (single instance fix)
-- Screenshot forwarding to group logs
-- All subscription features
-- Optimized for Render Free Tier
-UNTOUCHED: All payload formats and encryption (100% original)
+FIXED: Subscription screenshot handler, group log forwarding
+UNTOUCHED: All payload formats, encryption, and core functions (100% original)
 """
 
 import requests
@@ -58,8 +54,6 @@ HAS_CRYPTO = True
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 BOT_TOKEN = '8857657486:AAFE8F3DZySsrh_1-N_Qt2lOsS97OtzcgDQ'
-
-# ✅ FIX: Single instance - remove_webhook para iwas conflict
 bot = telebot.TeleBot(BOT_TOKEN, threaded=True, num_threads=10)
 
 try:
@@ -1221,7 +1215,7 @@ def background_inject_all_cars(chat_id, email, password, msg_id):
         pass
 
 # ═══════════════════════════════════════════════════════════
-# 🧩 BULK CLONE (OPTIMIZED)
+# 🧩 BULK CLONE (OPTIMIZED: 3 workers, 1.5s delay) + PROGRESS BAR
 # ═══════════════════════════════════════════════════════════
 def full_account_clone(src_record, src_cars, tgt_email, tgt_pass, source_token=None, progress_callback=None):
     try:
@@ -1672,9 +1666,9 @@ def admin_command(message):
         pass
 
 # ═══════════════════════════════════════════════════════════
-# 🎯 MESSAGE ROUTER (FIXED: PHOTO HANDLER)
+# 🎯 MESSAGE ROUTER - FIXED PHOTO HANDLER
 # ═══════════════════════════════════════════════════════════
-@bot.message_handler(func=lambda message: True)
+@bot.message_handler(func=lambda message: True, content_types=['text', 'photo', 'document'])
 def handle_all_messages(message):
     try:
         chat_id = message.chat.id
@@ -2355,7 +2349,7 @@ def handle_callback(call):
             bot.edit_message_text("💳 Choose payment method:", chat_id, msg_id, reply_markup=create_payment_method_keyboard())
         return
 
-    # Payment method selection - save state for screenshot
+    # Payment method selection – save state for screenshot
     if data.startswith("sub_payment_"):
         payment_method = data.replace("sub_payment_", "")
         if chat_id not in PENDING_SUBSCRIPTIONS: PENDING_SUBSCRIPTIONS[chat_id] = {}
