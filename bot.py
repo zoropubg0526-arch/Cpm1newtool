@@ -4297,23 +4297,18 @@ def _start_flask_background():
 
 if __name__ == "__main__":
     _enforce_single_instance()
-    _start_flask_background()
     print("="*60)
     print("𝙈𝘼𝙍𝙆𝘾𝙋𝙈1𝙏𝙊𝙊𝙋𝙎 - CPM1 + CPM2 (MAINTENANCE)")
     print("="*60)
     print("✅ Bot is running!")
     print("👑 Admins: 6531314640, 8650959684")
     print("🔑 Keys: MARKMWEHEHETOOL7077, MARKK, TANNER")
-    print("⏰ Time Keys: Supported")
-    print("🎁 Free Trial: Supported (10 minutes)")
-    print("📱 CPM1: All features working with coin costs (50/100/250)")
-    print("🎮 CPM2: UNDER MAINTENANCE")
-    print("📊 Key Tracking: Active")
-    print("🔄 Refresh Account: Fixed")
-    print("🔥 Firebase Logging: ACTIVE")
-    print("💎 Subscription System: FULLY WORKING")
-    print("🌟 Stars Payment: AUTOMATIC activation")
     print("="*60)
+
+    # Start Flask in background
+    flask_thread = threading.Thread(target=run_flask, daemon=True)
+    flask_thread.start()
+    print("🌐 Flask health server started in background (port 10000)")
 
     try:
         bot.delete_webhook(drop_pending_updates=True)
