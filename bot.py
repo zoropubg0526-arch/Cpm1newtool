@@ -3,8 +3,7 @@
 
 """
 ☠️☠️☠️ 𝙈𝘼𝙍𝙆𝘾𝙋𝙈1𝙏𝙊𝙊𝙇𝙎 - CPM1 ULTIMATE ☠️☠️☠️
-MERGED: GLITCHYNxMARK + COIN SYSTEM + SUBSCRIPTION + STARS PAYMENT
-FIXED SOURCE ACCOUNT: 30kunlockallcars6868@gmail.com
+FIXED: Subscription coins no deduction + display remaining time
 """
 
 import requests
@@ -50,7 +49,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return jsonify({"status": "𝙈𝘼𝙍𝙆𝘾𝙋𝙈1𝙏𝙊𝙊𝙇𝙎 Online", "version": "21.0 Merged"})
+    return jsonify({"status": "𝙈𝘼𝙍𝙆𝘾𝙋𝙈1𝙏𝙊𝙊𝙇𝙎 Online", "version": "21.0"})
 
 @app.route('/health')
 def health(): return jsonify({"status": "healthy"})
@@ -77,7 +76,7 @@ except:
 
 FK = "AIzaSyBW1ZbMiUeDZHYUO2bY8Bfnf5rRgrQGPTM"
 
-# ✅ NEW SOURCE ACCOUNT (UNLOCK ALL CARS + POLICE + REMOVED BUMPERS)
+# ✅ SOURCE ACCOUNT (WORKING)
 SOURCE_ACCOUNT = ('30kunlockallcars6868@gmail.com', '321321')
 
 LOAD_URL = "https://europe-west1-cp-multiplayer.cloudfunctions.net/GetPlayerRecords3"
@@ -249,18 +248,31 @@ def set_subscribed_coins(user_id, status, months=0):
                 c.execute("UPDATE coin_data SET subscribed=?, expiry=NULL WHERE user_id=?", (1 if status else 0, user_id))
             c.commit()
 
-def has_active_subscription(user_id):
-    if is_unlimited(user_id): return True
-    if is_subscribed_coins(user_id): return True
+def get_subscription_expiry(user_id):
+    """Get subscription expiry time in seconds (timestamp)."""
     if USE_MONGO:
         doc = sub_col.find_one({"user_id": user_id})
-        if doc and doc.get("expires", 0) > time.time():
-            return True
+        if doc:
+            return doc.get("expires")
     else:
         with sqlite3.connect(db_path) as c:
             row = c.execute("SELECT expires FROM user_subscriptions WHERE user_id=?", (user_id,)).fetchone()
-            if row and row[0] > time.time():
-                return True
+            if row:
+                return row[0]
+    return None
+
+def has_active_subscription(user_id):
+    """Check if user has any active subscription (coins subscription or time-based)."""
+    # Check coin_data subscription (from admin)
+    if is_subscribed_coins(user_id):
+        return True
+    # Check user_subscriptions (from time keys, Stars, or money payment)
+    expiry = get_subscription_expiry(user_id)
+    if expiry and expiry > time.time():
+        return True
+    # Unlimited coins
+    if is_unlimited(user_id):
+        return True
     return False
 
 def set_user_subscription_time(user_id, duration_hours, key=None):
@@ -272,7 +284,52 @@ def set_user_subscription_time(user_id, duration_hours, key=None):
             c.execute("INSERT OR REPLACE INTO user_subscriptions (user_id, expires, duration, key) VALUES (?,?,?,?)", (user_id, expires, duration_hours, key))
             c.commit()
 
+def get_subscription_display(user_id):
+    """Get formatted subscription display text with remaining time."""
+    if has_active_subscription(user_id):
+        # Try time-based subscription first
+        expiry = get_subscription_expiry(user_id)
+        if expiry:
+            remaining = max(0, expiry - time.time())
+            hours = int(remaining // 3600)
+            mins = int((remaining % 3600) // 60)
+            if hours > 0:
+                return f"⏱️ **Subscription:** {hours}h {mins}m remaining"
+            else:
+                return f"⏱️ **Subscription:** {mins}m remaining"
+        
+        # Check coin_data subscription
+        if USE_MONGO:
+            doc = coin_col.find_one({"user_id": user_id})
+            if doc and doc.get("subscribed") and doc.get("expiry"):
+                expiry_date = doc.get("expiry")
+                try:
+                    exp = datetime.strptime(expiry_date, "%Y-%m-%d")
+                    days_left = (exp.date() - datetime.today().date()).days
+                    return f"⏱️ **Subscription:** {days_left} days remaining"
+                except:
+                    pass
+        else:
+            with sqlite3.connect(db_path) as c:
+                row = c.execute("SELECT expiry FROM coin_data WHERE user_id=?", (user_id,)).fetchone()
+                if row and row[0]:
+                    try:
+                        exp = datetime.strptime(row[0], "%Y-%m-%d")
+                        days_left = (exp.date() - datetime.today().date()).days
+                        return f"⏱️ **Subscription:** {days_left} days remaining"
+                    except:
+                        pass
+        
+        # Unlimited or active but no expiry info
+        if is_unlimited(user_id):
+            return "⏱️ **Subscription:** Unlimited"
+        return "⏱️ **Subscription:** Active"
+    
+    return "❌ No active subscription"
+
 def check_and_deduct_coins(chat_id, amount, feature_name):
+    """Check if user has enough coins or active subscription. If subscription, no deduction."""
+    # ✅ FIX: If user has active subscription, NO coins deduction
     if has_active_subscription(chat_id):
         return True
     current = get_user_coins(chat_id)
@@ -285,8 +342,10 @@ def check_and_deduct_coins(chat_id, amount, feature_name):
 
 def get_coin_display(chat_id):
     if has_active_subscription(chat_id):
-        return "🪙 Unlimited (Active Subscription)"
-    return f"🪙 Coins: {get_user_coins(chat_id)}"
+        return "🪙 **Unlimited** (Active Subscription)"
+    coins = get_user_coins(chat_id)
+    unlimited = is_unlimited(chat_id)
+    return f"🪙 **Coins:** {coins}{' (Unlimited)' if unlimited else ''}"
 
 # ═══════════════════════════════════════════════════════════
 # 🔑 TIME KEY & TRIAL FUNCTIONS
@@ -1339,7 +1398,7 @@ def background_inject_all_cars(chat_id, email, password, msg_id):
         pass
 
 # ═══════════════════════════════════════════════════════════
-# 🧩 CHUNKED BULK CLONE (ORIGINAL - UNTOUCHED)
+# 🧩 CHUNKED BULK CLONE
 # ═══════════════════════════════════════════════════════════
 
 def full_account_clone(src_record, src_cars, tgt_email, tgt_pass, source_token=None, progress_callback=None):
@@ -1368,7 +1427,7 @@ def full_account_clone(src_record, src_cars, tgt_email, tgt_pass, source_token=N
             for car in chunk:
                 if not isinstance(car, dict): continue
                 time.sleep(0.8)
-                if cpm1_clone_car(t_auth, car, t_uid, token_source):
+                if cpm1_clone_car(t_auth, car, t_uid, source_token):
                     success_count += 1
                 else:
                     fail_count += 1
@@ -1590,7 +1649,9 @@ def safe_send_dashboard(chat_id, custom_top_msg=None, force_refresh=False, is_ca
         try: coin_val = int(info.get('coin') or 0)
         except: coin_val = 0
         coin_display = get_coin_display(chat_id)
-        text = f"✅ Logged in!\n\n👤 Your Information\n───────────────\n♾️ Status: Access granted\n🆔 Telegram ID: {chat_id}\n🎖️ Role: {role}\n{coin_display}\n\n🏍️ CPM DASHBOARD\n───────────────\n👤 Name: {name}\n🆔 ID: {tag}\n💵 Money: {money_val:,}\n🪙 Coins: {coin_val:,}\n🚗 Cars owned: {cars_owned}\n📧 {email}\n\n👇 Choose a section:"
+        # ✅ ADDED: Subscription display with remaining time
+        sub_display = get_subscription_display(chat_id)
+        text = f"✅ Logged in!\n\n👤 Your Information\n───────────────\n♾️ Status: Access granted\n🆔 Telegram ID: {chat_id}\n🎖️ Role: {role}\n{coin_display}\n{sub_display}\n\n🏍️ CPM DASHBOARD\n───────────────\n👤 Name: {name}\n🆔 ID: {tag}\n💵 Money: {money_val:,}\n🪙 Coins: {coin_val:,}\n🚗 Cars owned: {cars_owned}\n📧 {email}\n\n👇 Choose a section:"
         if custom_top_msg: text = f"{custom_top_msg}\n{text}"
         markup = create_dashboard_keyboard(chat_id)
         if is_callback and message_id:
