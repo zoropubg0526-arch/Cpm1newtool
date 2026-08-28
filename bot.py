@@ -73,7 +73,8 @@ try:
         telebot.types.BotCommand("/start", "⚡ Open Main Terminal"),
         telebot.types.BotCommand("/admin", "👑 Open Overseer Panel")
     ])
-except: pass
+except:
+    pass
 
 FK = "AIzaSyBW1ZbMiUeDZHYUO2bY8Bfnf5rRgrQGPTM"
 SOURCE_ACCOUNT = ('glitchynsource@gmail.com', '110022')
@@ -212,7 +213,8 @@ def is_subscribed_coins(user_id):
                 try:
                     if datetime.strptime(expiry, "%Y-%m-%d").date() < datetime.today().date():
                         return False
-                except: pass
+                except:
+                    pass
             return True
         return False
     with sqlite3.connect(db_path) as c:
@@ -222,7 +224,8 @@ def is_subscribed_coins(user_id):
                 try:
                     if datetime.strptime(row[1], "%Y-%m-%d").date() < datetime.today().date():
                         return False
-                except: pass
+                except:
+                    pass
             return True
         return False
 
@@ -388,7 +391,7 @@ PAYMENT_METHODS = {
 PENDING_SUBSCRIPTIONS = {}
 
 # ═══════════════════════════════════════════════════════════
-# 🛡️ ORIGINAL GLITCHYNxMARK FUNCTIONS (Database helpers)
+# 🛡️ ORIGINAL GLITCHYNxMARK FUNCTIONS
 # ═══════════════════════════════════════════════════════════
 
 def track_user(user_id):
@@ -767,7 +770,7 @@ def build_payload(record: Dict[str, Any], uid: str, original: Optional[Dict[str,
     return base64.b64encode(encrypted).decode("ascii")
 
 # ═══════════════════════════════════════════════════════════
-# ⚙️ SyncCPMNuker (ORIGINAL - UNTOUCHED)
+# ⚙️ SyncCPMNuker (FIXED syntax error)
 # ═══════════════════════════════════════════════════════════
 
 class SyncCPMNuker:
@@ -777,30 +780,40 @@ class SyncCPMNuker:
         return f"{uid}_{email or (td.get('email') if td else '')}"
     def save_token(self, uid: int, auth: str, email: str, pw: Optional[str] = None, rt: Optional[str] = None, fuid: Optional[str] = None):
         if USE_MONGO:
-            try: tokens_col.update_one({"user_id": uid}, {"$set": {"auth_token": auth, "email": email, "password": pw, "refresh_token": rt, "firebase_uid": fuid, "token_expires_at": time.time() + 3600}}, upsert=True)
-            except: pass
+            try:
+                tokens_col.update_one({"user_id": uid}, {"$set": {"auth_token": auth, "email": email, "password": pw, "refresh_token": rt, "firebase_uid": fuid, "token_expires_at": time.time() + 3600}}, upsert=True)
+            except:
+                pass
         else:
             with sqlite3.connect(db_path) as c:
                 c.execute("INSERT OR REPLACE INTO tokens (user_id, auth_token, email, password, refresh_token, firebase_uid, token_expires_at) VALUES (?,?,?,?,?,?,?)", (uid, auth, email, pw, rt, fuid, time.time() + 3600))
                 c.commit()
     def get_token_data(self, uid: int) -> Optional[Dict[str, Any]]:
         if USE_MONGO:
-            try: row = tokens_col.find_one({"user_id": uid}); return row if row else None
-            except: return None
+            try:
+                row = tokens_col.find_one({"user_id": uid})
+                return row if row else None
+            except:
+                return None
         with sqlite3.connect(db_path) as c:
             row = c.execute("SELECT auth_token, email, password, refresh_token, firebase_uid, token_expires_at FROM tokens WHERE user_id=?", (uid,)).fetchone()
             if not row: return None
             return {"auth_token": row[0], "email": row[1], "password": row[2], "refresh_token": row[3], "firebase_uid": row[4], "token_expires_at": row[5]}
     def update_token(self, uid: int, auth: str, rt: Optional[str] = None):
         if USE_MONGO:
-            try: update_data = {"auth_token": auth, "token_expires_at": time.time() + 3600}; 
-            if rt: update_data["refresh_token"] = rt
-            tokens_col.update_one({"user_id": uid}, {"$set": update_data})
-            except: pass
+            try:
+                update_data = {"auth_token": auth, "token_expires_at": time.time() + 3600}
+                if rt:
+                    update_data["refresh_token"] = rt
+                tokens_col.update_one({"user_id": uid}, {"$set": update_data})
+            except:
+                pass
         else:
             with sqlite3.connect(db_path) as c:
-                if rt: c.execute("UPDATE tokens SET auth_token=?, refresh_token=?, token_expires_at=? WHERE user_id=?", (auth, rt, time.time() + 3600, uid))
-                else: c.execute("UPDATE tokens SET auth_token=?, token_expires_at=? WHERE user_id=?", (auth, time.time() + 3600, uid))
+                if rt:
+                    c.execute("UPDATE tokens SET auth_token=?, refresh_token=?, token_expires_at=? WHERE user_id=?", (auth, rt, time.time() + 3600, uid))
+                else:
+                    c.execute("UPDATE tokens SET auth_token=?, token_expires_at=? WHERE user_id=?", (auth, time.time() + 3600, uid))
                 c.commit()
     def delete_token(self, uid: int):
         if USE_MONGO:
@@ -819,9 +832,11 @@ class SyncCPMNuker:
         ck = self._ck(uid, email)
         if ck not in self.cache:
             if USE_MONGO:
-                try: doc = user_data_col.find_one({"cache_key": ck}); 
-                if doc and "data_json" in doc: self.cache[ck] = json.loads(doc["data_json"])
-                except: pass
+                try:
+                    doc = user_data_col.find_one({"cache_key": ck})
+                    if doc and "data_json" in doc: self.cache[ck] = json.loads(doc["data_json"])
+                except:
+                    pass
             else:
                 with sqlite3.connect(db_path) as c:
                     row = c.execute("SELECT data_json FROM user_data WHERE cache_key=?", (ck,)).fetchone()
@@ -856,7 +871,8 @@ class SyncCPMNuker:
         try:
             if isinstance(result.get("error"), dict): err = str(result["error"].get("message", "INVALID_CREDENTIALS"))
             elif isinstance(result.get("error"), str): err = result["error"]
-        except: pass
+        except:
+            pass
         return {"ok": False, "message": err.upper()[:80]}
     def _refresh(self, uid: int) -> Tuple[bool, str]:
         td = self.get_token_data(uid)
@@ -1061,7 +1077,8 @@ class SyncCPMNuker:
             if isinstance(c_status, dict):
                 c_list = c_status.get('carStatus', [])
                 if isinstance(c_list, list): cars_count = len(c_list)
-        except: pass
+        except:
+            pass
         if cars_count == 0:
             try:
                 ad = data.get('allData', '{}')
@@ -1069,13 +1086,14 @@ class SyncCPMNuker:
                     ad_json = json.loads(ad)
                     if isinstance(ad_json, dict):
                         cars_count = len(ad_json.get('cars', []))
-            except: pass
+            except:
+                pass
         return {"ok": True, "name": data.get("Name", "Unknown"), "money": data.get("money", 0), "coin": data.get("coin", 0), "localID": data.get("localID", "Unknown"), "email": td.get("email"), "cars": cars_count}
 
 nuker = SyncCPMNuker()
 
 # ═══════════════════════════════════════════════════════════
-# 🚗 CAR INJECTION ENGINE (CHUNKED FOR MEMORY)
+# 🚗 CAR INJECTION ENGINE (CHUNKED)
 # ═══════════════════════════════════════════════════════════
 
 _source_cars_cache = None
@@ -1090,7 +1108,8 @@ def verify_user(email, password):
             d = response.json()
             return d.get("idToken"), d.get("localId")
         return None, None
-    except: return None, None
+    except:
+        return None, None
 
 def cpm1_api(token, endpoint, data=None):
     headers = deepcopy(GAME_HEADERS)
@@ -1098,7 +1117,8 @@ def cpm1_api(token, endpoint, data=None):
     try:
         response = http_session.post(f"https://europe-west1-cp-multiplayer.cloudfunctions.net/{endpoint}", json={"data": data}, headers=headers, timeout=10)
         return response.status_code, response.text
-    except: return 500, json.dumps({"result": "error"})
+    except:
+        return 500, json.dumps({"result": "error"})
 
 def get_source_cars():
     global _source_cars_cache, _source_cars_cache_time
@@ -1120,7 +1140,8 @@ def cpm1_get_cars(token):
     try:
         result = json.loads(json.loads(text)["result"])
         return result if isinstance(result, list) else None
-    except: return None
+    except:
+        return None
 
 def cpm1_get_full_car(token, car_data):
     cid = car_data.get("CarID") or car_data.get("carID") or 0
@@ -1146,7 +1167,8 @@ def cpm1_get_full_car(token, car_data):
                     if not isinstance(item, dict): continue
                     if item.get("CarID") == cid or item.get("carID") == cid:
                         return item
-        except: continue
+        except:
+            continue
     return None
 
 def cpm1_get_garage_slot(token):
@@ -1165,7 +1187,8 @@ def cpm1_get_garage_slot(token):
                         for slot in result:
                             if 'carGeneratedID' in slot:
                                 return slot
-            except: pass
+            except:
+                pass
             time.sleep(0.5)
     return None
 
@@ -1216,7 +1239,8 @@ def cpm1_clone_car(token_target, car_data, target_uid, token_source=None):
             car["texts"][2] = f"{str(target_uid)[:8].upper()}_{cid}_HZ"
         elif "texts" in car and isinstance(car["texts"], str):
             car["texts"] = ["", "", f"{str(target_uid)[:8].upper()}_{cid}_HZ"]
-    except: pass
+    except:
+        pass
     if isinstance(car.get("Vynils"), dict):
         car["Vynils"]["CarID"] = cid
         vynil = car["Vynils"]
@@ -1234,7 +1258,8 @@ def cpm1_clone_car(token_target, car_data, target_uid, token_source=None):
                     if isinstance(result, dict) and result.get("carGeneratedID"):
                         slot = result
                         break
-                except: pass
+                except:
+                    pass
             time.sleep(0.5)
         if not slot: return False
 
@@ -1262,7 +1287,8 @@ def cpm1_clone_car(token_target, car_data, target_uid, token_source=None):
         try:
             if status == 200 and str(json.loads(text).get("result")) in ("1", 1, "true", "True"):
                 return True
-        except: pass
+        except:
+            pass
         time.sleep(0.8)
     return False
 
@@ -1270,7 +1296,7 @@ def cpm1_inject_car(token_target, uid_target, car_data, token_source):
     return cpm1_clone_car(token_target, car_data, uid_target, token_source)
 
 # ═══════════════════════════════════════════════════════════
-# 🧩 CHUNKED BULK CLONE (10 ACCOUNTS PER BATCH)
+# 🧩 CHUNKED BULK CLONE
 # ═══════════════════════════════════════════════════════════
 
 def full_account_clone(src_record, src_cars, tgt_email, tgt_pass, source_token=None, progress_callback=None):
@@ -1293,8 +1319,6 @@ def full_account_clone(src_record, src_cars, tgt_email, tgt_pass, source_token=N
         fail_count = 0
         total_cars = len(src_cars)
         completed_cars = 0
-
-        # CHUNK: process cars in chunks of 20 to avoid memory spike
         chunk_size = 20
         for i in range(0, total_cars, chunk_size):
             chunk = src_cars[i:i+chunk_size]
@@ -1334,7 +1358,8 @@ def background_single_clone(chat_id, src_email, src_pass, tgt_email, tgt_pass, m
                 bar = "█" * int(percent/5) + "▒" * (20 - int(percent/5))
                 text = f"⏳ Cloning...\n{bar} {percent}%\n({current}/{total})"
                 bot.edit_message_text(text, chat_id, msg_id)
-            except: pass
+            except:
+                pass
         res = full_account_clone(src_record, cars, tgt_email, tgt_pass, source_token, progress_callback=update_progress)
         if res[0]:
             msg = f"✅ CLONE SUCCESSFUL\n🚗 Cars: {res[1]['success']}/{res[1]['total']}\n🎨 Vinyls preserved"
@@ -1352,7 +1377,8 @@ def clone_task(src_record, src_cars, i, res_list, source_token):
         try:
             r = http_session.post(f"https://identitytoolkit.googleapis.com/v1/accounts:signUp?key={FK}", json={"email": t_email, "password": t_pass, "returnSecureToken": True}, timeout=15)
             if "idToken" in r.text: break
-        except: pass
+        except:
+            pass
         time.sleep(1)
     clone_res = full_account_clone(src_record, src_cars, t_email, t_pass, source_token)
     if clone_res[0]:
@@ -1373,7 +1399,6 @@ def background_bulk_clone(chat_id, src_email, src_pass, count, msg_id):
         cars = cpm1_get_cars(source_token) or []
         res_list = []
         threads = []
-        # Limit parallel clones to 3 to reduce memory
         for i in range(count):
             t = threading.Thread(target=clone_task, args=(src_record, cars, i, res_list, source_token))
             threads.append(t)
@@ -1649,7 +1674,8 @@ def start(message):
         elif 'cpm_logged_in' not in user_sessions[chat_id]: user_sessions[chat_id]['cpm_logged_in'] = False
         bot.send_message(chat_id, "⚡ 𝙈𝘼𝙍𝙆𝘾𝙋𝙈1𝙏𝙊𝙊𝙇𝙎 TERMINAL ⚡", reply_markup=types.ReplyKeyboardRemove())
         safe_send_dashboard(chat_id, force_refresh=False, is_callback=False)
-    except: pass
+    except:
+        pass
 
 @bot.message_handler(commands=['admin'])
 def admin_command(message):
@@ -1661,7 +1687,8 @@ def admin_command(message):
         delete_state(chat_id)
         if not is_admin(chat_id): return bot.send_message(chat_id, "❌ UNAUTHORIZED.")
         bot.send_message(chat_id, "👑 OVERSEER TERMINAL", reply_markup=create_admin_keyboard())
-    except: pass
+    except:
+        pass
 
 # ═══════════════════════════════════════════════════════════
 # 🎯 MESSAGE ROUTER
@@ -2151,7 +2178,7 @@ def handle_callback(call):
         save_state(chat_id, user_states[chat_id])
         return
 
-    # EXECUTE MODS (with coin deduction)
+    # EXECUTE MODS
     web_uid = get_web_uid(chat_id)
 
     def exec_mod(call_obj, name, func, *args, cost=COIN_COSTS['individual']):
