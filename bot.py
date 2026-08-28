@@ -54,19 +54,6 @@ def home():
 def health():
     return jsonify({"status": "healthy"})
 
-def run_flask():
-    try:
-        import logging
-        logging.getLogger('werkzeug').setLevel(logging.ERROR)
-        port = int(os.environ.get('PORT', 10000))
-        app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False, threaded=True)
-    except SystemExit:
-        pass
-    except Exception as e:
-        print(f"⚠️ Flask server error: {e}")
-
-flask_thread = None
-
 # ═══════════════════════════════════════════════════════════
 # 🔑 TOKENS & KEYS
 # ═══════════════════════════════════════════════════════════
@@ -4253,50 +4240,33 @@ def handle_all_messages(message):
         bot.send_message(chat_id, "❌ **Unknown command!**", parse_mode='Markdown')
 
 # ═══════════════════════════════════════════════════════════
-# 🚀 BOT START
+# 🚀 START BOT POLLING IN BACKGROUND (para sa gunicorn)
 # ═══════════════════════════════════════════════════════════
 
-def _enforce_single_instance():
-    my_pid = os.getpid()
-    try:
-        myself = []
-        try:
-            for pid_dir in os.listdir('/proc'):
-                if not pid_dir.isdigit():
-                    continue
-                pid = int(pid_dir)
-                if pid == my_pid:
-                    continue
-                cmdline_path = f'/proc/{pid}/cmdline'
-                try:
-                    with open(cmdline_path, 'rb') as f:
-                        cmdline = f.read().replace(b'\x00', b' ').decode(errors='ignore')
-                    if 'bot.py' in cmdline and 'python' in cmdline:
-                        myself.append(pid)
-                except (PermissionError, FileNotFoundError, ProcessLookupError):
-                    continue
-        except Exception:
-            pass
-        for pid in myself:
-            try:
-                os.kill(pid, signal.SIGTERM)
-                print(f"🔪 Stopped older bot instance (PID {pid})")
-            except (ProcessLookupError, PermissionError):
-                pass
-        if myself:
-            time.sleep(3)
-    except Exception as e:
-        print(f"⚠️ Single-instance check skipped: {e}")
+_bot_started = False
 
-def _start_flask_background():
-    global flask_thread
-    flask_thread = threading.Thread(target=run_flask, daemon=True)
-    flask_thread.start()
-    port = int(os.environ.get('PORT', 10000))
-    print(f"🌐 Flask health server started in background (port {port})")
+def start_bot_polling():
+    global _bot_started
+    if _bot_started:
+        return
+    _bot_started = True
+    print("🚀 Starting bot polling in background thread...")
+    while True:
+        try:
+            bot.polling(none_stop=True, timeout=20)
+        except Exception as e:
+            print(f"❌ Bot polling error: {e}")
+            time.sleep(5)
+
+# Start bot polling when module is imported (for gunicorn)
+threading.Thread(target=start_bot_polling, daemon=True).start()
+
+# ═══════════════════════════════════════════════════════════
+# 🚀 BOT START (for direct run - python bot.py)
+# ═══════════════════════════════════════════════════════════
 
 if __name__ == "__main__":
-    _enforce_single_instance()
+    # This block runs only when executed directly (not via gunicorn)
     print("="*60)
     print("𝙈𝘼𝙍𝙆𝘾𝙋𝙈1𝙏𝙊𝙊𝙋𝙎 - CPM1 + CPM2 (MAINTENANCE)")
     print("="*60)
@@ -4304,11 +4274,6 @@ if __name__ == "__main__":
     print("👑 Admins: 6531314640, 8650959684")
     print("🔑 Keys: MARKMWEHEHETOOL7077, MARKK, TANNER")
     print("="*60)
-
-    # Start Flask in background
-    flask_thread = threading.Thread(target=run_flask, daemon=True)
-    flask_thread.start()
-    print("🌐 Flask health server started in background (port 10000)")
 
     try:
         bot.delete_webhook(drop_pending_updates=True)
