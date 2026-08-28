@@ -2,10 +2,10 @@ services:
   - type: web
     name: markcpm1tools
     runtime: python
-    repo: https://github.com/zoropubg0526/zoropubg0526-arch
+    repo: https://github.com/yourusername/yourrepo
     plan: free
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.9
     buildCommand: pip install -r requirements.txt
-    startCommand: sh start.sh
+    startCommand: gunicorn bot:app
