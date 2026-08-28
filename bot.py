@@ -3,7 +3,7 @@
 
 """
 ☠️☠️☠️ 𝙈𝘼𝙍𝙆𝘾𝙋𝙈1𝙏𝙊𝙊𝙇𝙎 - CPM1 ULTIMATE ☠️☠️☠️
-FIXED: Subscription group log with confirm/decline buttons, complete details
+FIXED: Conflict 409 (single instance), Confirm/Decline buttons working, corrected payment details
 UNTOUCHED: All payload formats, encryption, and core functions (100% original)
 """
 
@@ -56,6 +56,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 BOT_TOKEN = '8857657486:AAFE8F3DZySsrh_1-N_Qt2lOsS97OtzcgDQ'
 bot = telebot.TeleBot(BOT_TOKEN, threaded=True, num_threads=10)
 
+# ✅ Force single instance: remove webhook and skip pending updates
 try:
     bot.remove_webhook()
     time.sleep(1)
@@ -90,7 +91,7 @@ GAME_HEADERS = {
 GROUP_LOG_ID = -1004441134033
 
 # ═══════════════════════════════════════════════════════════
-# 📡 HTTP SESSION (Optimized)
+# 📡 HTTP SESSION
 # ═══════════════════════════════════════════════════════════
 http_session = requests.Session()
 adapter = requests.adapters.HTTPAdapter(pool_connections=10, pool_maxsize=10, max_retries=2)
@@ -98,7 +99,7 @@ http_session.mount('https://', adapter)
 http_session.mount('http://', adapter)
 
 # ═══════════════════════════════════════════════════════════
-# 🛡️ DATABASE (SQLite only)
+# 🛡️ DATABASE
 # ═══════════════════════════════════════════════════════════
 ADMIN_IDS = set()
 TRACKED_USERS_CACHE = set()
@@ -315,7 +316,7 @@ def use_trial_key(key, user_id):
         return True, "Success"
 
 # ═══════════════════════════════════════════════════════════
-# 💳 SUBSCRIPTION SETTINGS (NEW PRICES)
+# 💳 SUBSCRIPTION SETTINGS (UPDATED PAYMENT DETAILS)
 # ═══════════════════════════════════════════════════════════
 SUBSCRIPTION_DURATIONS = {
     "1_day": 24, "5_days": 120, "1_week": 168, "3_weeks": 504,
@@ -336,7 +337,7 @@ SUBSCRIPTION_MONEY = {
 PAYMENT_METHODS = {
     "paypal": {
         "label": "💳 PayPal",
-        "details": "📧 **Email:** `markryanmanoguid867@gmail.com`\n👤 **Name:** MARK RYAN MANOGUID\n📌 Please screenshot the payment."
+        "details": "📧 **Email:** `markryanmanoguid867@gmail.com`\n👤 **Name:** Markryan Manoguid\n📌 Please screenshot the payment."
     },
     "paymaya": {
         "label": "📱 PayMaya",
@@ -1224,7 +1225,7 @@ def background_inject_all_cars(chat_id, email, password, msg_id):
         pass
 
 # ═══════════════════════════════════════════════════════════
-# 🧩 BULK CLONE (OPTIMIZED: 3 workers, 1.5s delay) + PROGRESS BAR
+# 🧩 BULK CLONE (OPTIMIZED)
 # ═══════════════════════════════════════════════════════════
 def full_account_clone(src_record, src_cars, tgt_email, tgt_pass, source_token=None, progress_callback=None):
     try:
@@ -1486,8 +1487,9 @@ def create_payment_method_keyboard():
 
 def create_subscription_confirm_keyboard(user_id, duration_key, payment_method):
     markup = types.InlineKeyboardMarkup(row_width=2)
-    btn1 = types.InlineKeyboardButton("✅ Confirm", callback_data=f"sub_confirm_{user_id}_{duration_key}_{payment_method}")
-    btn2 = types.InlineKeyboardButton("❌ Decline", callback_data=f"sub_decline_{user_id}_{duration_key}_{payment_method}")
+    # Use "||" as separator to avoid underscore conflicts
+    btn1 = types.InlineKeyboardButton("✅ Confirm", callback_data=f"sub_confirm||{user_id}||{duration_key}||{payment_method}")
+    btn2 = types.InlineKeyboardButton("❌ Decline", callback_data=f"sub_decline||{user_id}||{duration_key}||{payment_method}")
     markup.row(btn1, btn2)
     return markup
 
@@ -2073,22 +2075,6 @@ def premium_required(call):
         return True
     return False
 
-# Helper to parse confirm/decline callback
-def _parse_sub_callback(rest):
-    try:
-        user_id = int(rest.split("_", 1)[0])
-        remainder = rest.split("_", 1)[1]
-    except Exception:
-        return None, None, None
-    for dur in SUBSCRIPTION_DURATIONS:
-        if remainder.startswith(dur + "_"):
-            pm = remainder[len(dur) + 1:]
-            if pm in PAYMENT_METHODS:
-                return user_id, dur, pm
-        if remainder == dur and dur in PAYMENT_METHODS:
-            return user_id, dur, dur
-    return None, None, None
-
 @bot.callback_query_handler(func=lambda call: True)
 def handle_callback(call):
     chat_id = call.message.chat.id
@@ -2111,17 +2097,25 @@ def handle_callback(call):
         try: bot.answer_callback_query(call.id)
         except: pass
 
-    # ====== SUBSCRIPTION CONFIRM / DECLINE ======
-    if data.startswith("sub_confirm_"):
-        rest = data[len("sub_confirm_"):]
-        user_id, duration_key, payment_method = _parse_sub_callback(rest)
-        if not user_id:
-            bot.answer_callback_query(call.id, "❌ Invalid data!", show_alert=True)
+    # ====== SUBSCRIPTION CONFIRM / DECLINE (using "||" separator) ======
+    if data.startswith("sub_confirm||"):
+        parts = data.split("||")
+        if len(parts) != 4:
+            bot.answer_callback_query(call.id, "❌ Invalid format!", show_alert=True)
+            return
+        _, user_id_str, duration_key, payment_method = parts
+        try:
+            user_id = int(user_id_str)
+        except ValueError:
+            bot.answer_callback_query(call.id, "❌ Invalid user ID!", show_alert=True)
+            return
+        if duration_key not in SUBSCRIPTION_DURATIONS:
+            bot.answer_callback_query(call.id, "❌ Invalid duration!", show_alert=True)
             return
         if payment_method not in PAYMENT_METHODS:
             bot.answer_callback_query(call.id, "❌ Invalid payment method!", show_alert=True)
             return
-        duration_hours = SUBSCRIPTION_DURATIONS.get(duration_key, 24)
+        duration_hours = SUBSCRIPTION_DURATIONS[duration_key]
         try:
             user = bot.get_chat(user_id)
             username = user.username or "No username"
@@ -2172,11 +2166,19 @@ def handle_callback(call):
             del PENDING_SUBSCRIPTIONS[user_id]
         return
 
-    if data.startswith("sub_decline_"):
-        rest = data[len("sub_decline_"):]
-        user_id, duration_key, payment_method = _parse_sub_callback(rest)
-        if not user_id:
-            bot.answer_callback_query(call.id, "❌ Invalid data!", show_alert=True)
+    if data.startswith("sub_decline||"):
+        parts = data.split("||")
+        if len(parts) != 4:
+            bot.answer_callback_query(call.id, "❌ Invalid format!", show_alert=True)
+            return
+        _, user_id_str, duration_key, payment_method = parts
+        try:
+            user_id = int(user_id_str)
+        except ValueError:
+            bot.answer_callback_query(call.id, "❌ Invalid user ID!", show_alert=True)
+            return
+        if duration_key not in SUBSCRIPTION_DURATIONS:
+            bot.answer_callback_query(call.id, "❌ Invalid duration!", show_alert=True)
             return
         if payment_method not in PAYMENT_METHODS:
             bot.answer_callback_query(call.id, "❌ Invalid payment method!", show_alert=True)
@@ -2622,6 +2624,7 @@ if __name__ == "__main__":
     print("📸 Screenshots forwarded to group: -1004441134033")
     print("="*60)
 
+    # Remove webhook and skip pending updates to avoid conflict
     try:
         bot.delete_webhook(drop_pending_updates=True)
         print("🧹 Webhook cleared")
@@ -2630,7 +2633,7 @@ if __name__ == "__main__":
 
     while True:
         try:
-            bot.polling(none_stop=True, timeout=60, long_polling_timeout=60)
+            bot.polling(none_stop=True, timeout=60, long_polling_timeout=60, skip_pending=True)
         except Exception as e:
             print(f"❌ Polling error: {e}")
             time.sleep(3)
