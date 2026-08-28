@@ -1,7 +1,11 @@
 services:
   - type: web
-    name: markmwhehetool-bot
-    env: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: bash start.sh
+    name: markcpm1tools
+    runtime: python
+    repo: https://github.com/zoropubg0526/zoropubg0526-arch
     plan: free
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+    buildCommand: pip install -r requirements.txt
+    startCommand: sh start.sh
