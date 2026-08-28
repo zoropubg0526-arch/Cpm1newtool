@@ -3,8 +3,8 @@
 
 """
 ☠️☠️☠️ 𝙈𝘼𝙍𝙆𝘾𝙋𝙈1𝙏𝙊𝙊𝙇𝙎 - CPM1 ULTIMATE ☠️☠️☠️
-FIXED: Subscription prices, invalid duration, Telegram Stars, Bulk Clone animation
-OPTIMIZED: For Render free hosting (5 workers, 0.8s delay)
+FIXED: Complete code, bulk clone animation, subscription prices, Telegram Stars
+OPTIMIZED: 5 workers, 0.8s delay for Render free tier
 """
 
 import requests
@@ -32,60 +32,40 @@ from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 import urllib3
 from pymongo import MongoClient
-
-# ═══════════════════════════════════════════════════════════
-# 🛠️ MISSING VARIABLES FIX
-# ═══════════════════════════════════════════════════════════
-HAS_BROTLI = True
-HAS_CRYPTO = True
-
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
-# ═══════════════════════════════════════════════════════════
-# 🌐 FLASK WEB SERVER
-# ═══════════════════════════════════════════════════════════
-
 from flask import Flask, jsonify
-app = Flask(__name__)
 
+# ═══════════════════════════════════════════════════════════
+# 🛠️ FLASK APP
+# ═══════════════════════════════════════════════════════════
+app = Flask(__name__)
 @app.route('/')
 def home():
-    return jsonify({"status": "𝙈𝘼𝙍𝙆𝘾𝙋𝙈1𝙏𝙊𝙊𝙇𝙎 Online", "version": "21.0"})
-
+    return jsonify({"status": "MARKCPM1TOOLS Online", "version": "21.0"})
 @app.route('/health')
 def health(): return jsonify({"status": "healthy"})
-
 def run_flask():
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)), debug=False, use_reloader=False)
-
 threading.Thread(target=run_flask, daemon=True).start()
 
 # ═══════════════════════════════════════════════════════════
-# 📡 GLOBAL SESSIONS & API CONFIGURATION
+# 📡 BOT CONFIG
 # ═══════════════════════════════════════════════════════════
-
 BOT_TOKEN = '8857657486:AAFE8F3DZySsrh_1-N_Qt2lOsS97OtzcgDQ'
 bot = telebot.TeleBot(BOT_TOKEN, threaded=True, num_threads=50)
-
 try:
     bot.set_my_commands([
         telebot.types.BotCommand("/start", "⚡ Open Main Terminal"),
         telebot.types.BotCommand("/admin", "👑 Open Overseer Panel")
     ])
-except:
-    pass
+except: pass
 
 FK = "AIzaSyBW1ZbMiUeDZHYUO2bY8Bfnf5rRgrQGPTM"
-
-# ✅ SOURCE ACCOUNT (WORKING)
 SOURCE_ACCOUNT = ('30kunlockallcars6868@gmail.com', '321321')
-
 LOAD_URL = "https://europe-west1-cp-multiplayer.cloudfunctions.net/GetPlayerRecords3"
 SAVE_URL = "https://europe-west1-cp-multiplayer.cloudfunctions.net/SavePlayerRecordsPartially8"
 RANK_URL = "https://us-central1-cp-multiplayer.cloudfunctions.net/SetUserRating5"
 MAX_MONEY = 50_000_000
 MAX_COIN = 500_000
-
 GAME_HEADERS = {
     "Accept": "*/*",
     "Accept-Encoding": "gzip",
@@ -93,22 +73,18 @@ GAME_HEADERS = {
     "User-Agent": "UnityPlayer/2022.3.62f2 (UnityWebRequest/1.0, libcurl/8.10.1-DEV)",
     "X-Unity-Version": "2022.3.62f2",
 }
-
 http_session = requests.Session()
 adapter = requests.adapters.HTTPAdapter(pool_connections=50, pool_maxsize=50, max_retries=2)
 http_session.mount('https://', adapter)
 http_session.mount('http://', adapter)
 
 # ═══════════════════════════════════════════════════════════
-# 🛡️ DATABASE (Hybrid SQLite/MongoDB)
+# 🛡️ DATABASE (Hybrid)
 # ═══════════════════════════════════════════════════════════
-
 MONGO_URI = "mongodb+srv://sixtysecondswipes_db_user:eL1aAV73sCuyOJ2c@cluster0.5n928ih.mongodb.net/?appName=Cluster0"
-
 ADMIN_IDS = set()
 TRACKED_USERS_CACHE = set()
 USE_MONGO = False
-
 db_path = "glitchyn_data.db"
 with sqlite3.connect(db_path) as c:
     c.execute("CREATE TABLE IF NOT EXISTS premium_users (user_id INTEGER PRIMARY KEY)")
@@ -123,7 +99,6 @@ with sqlite3.connect(db_path) as c:
     c.execute("CREATE TABLE IF NOT EXISTS trial_keys (key TEXT PRIMARY KEY, expires REAL, used INTEGER DEFAULT 0, user_id INTEGER, created_at REAL)")
     c.execute("CREATE TABLE IF NOT EXISTS stars_balance (total_stars INTEGER DEFAULT 0)")
     c.commit()
-
 try:
     mongo_client = MongoClient(MONGO_URI, maxPoolSize=10, serverSelectionTimeoutMS=2000)
     mongo_client.server_info()
@@ -132,7 +107,6 @@ try:
     coin_col, sub_col, time_keys_col, trial_keys_col, stars_col = db["coin_data"], db["user_subscriptions"], db["time_keys"], db["trial_keys"], db["stars_balance"]
     USE_MONGO = True
     print("✅ MongoDB Connected!")
-
     if admins_col.count_documents({}) == 0:
         for aid in [8254935096, 6531314640]:
             admins_col.update_one({"user_id": aid}, {"$set": {"user_id": aid}}, upsert=True)
@@ -150,16 +124,13 @@ except Exception as e:
 # ═══════════════════════════════════════════════════════════
 # 🪙 COIN & SUBSCRIPTION SYSTEM
 # ═══════════════════════════════════════════════════════════
-
 COIN_COSTS = {"individual": 50, "clone": 100, "bulk": 250}
-
 def _ensure_coin_user(user_id):
     if USE_MONGO:
         coin_col.update_one({"user_id": user_id}, {"$setOnInsert": {"coins": 0, "unlimited": 0, "subscribed": 0, "expiry": None}}, upsert=True)
     else:
         with sqlite3.connect(db_path) as c:
             c.execute("INSERT OR IGNORE INTO coin_data (user_id, coins, unlimited, subscribed) VALUES (?,0,0,0)", (user_id,))
-
 def get_user_coins(user_id):
     if USE_MONGO:
         doc = coin_col.find_one({"user_id": user_id})
@@ -167,7 +138,6 @@ def get_user_coins(user_id):
     with sqlite3.connect(db_path) as c:
         row = c.execute("SELECT coins FROM coin_data WHERE user_id=?", (user_id,)).fetchone()
         return row[0] if row else 0
-
 def set_user_coins(user_id, amount):
     _ensure_coin_user(user_id)
     if USE_MONGO:
@@ -176,17 +146,14 @@ def set_user_coins(user_id, amount):
         with sqlite3.connect(db_path) as c:
             c.execute("UPDATE coin_data SET coins=? WHERE user_id=?", (amount, user_id))
             c.commit()
-
 def add_coins(user_id, amount):
     current = get_user_coins(user_id)
     set_user_coins(user_id, current + amount)
-
 def deduct_coins(user_id, amount):
     current = get_user_coins(user_id)
     if current < amount: return False
     set_user_coins(user_id, current - amount)
     return True
-
 def is_unlimited(user_id):
     if USE_MONGO:
         doc = coin_col.find_one({"user_id": user_id})
@@ -194,7 +161,6 @@ def is_unlimited(user_id):
     with sqlite3.connect(db_path) as c:
         row = c.execute("SELECT unlimited FROM coin_data WHERE user_id=?", (user_id,)).fetchone()
         return bool(row[0]) if row else False
-
 def set_unlimited(user_id, status):
     _ensure_coin_user(user_id)
     val = 1 if status else 0
@@ -204,7 +170,6 @@ def set_unlimited(user_id, status):
         with sqlite3.connect(db_path) as c:
             c.execute("UPDATE coin_data SET unlimited=? WHERE user_id=?", (val, user_id))
             c.commit()
-
 def is_subscribed_coins(user_id):
     if USE_MONGO:
         doc = coin_col.find_one({"user_id": user_id})
@@ -229,7 +194,6 @@ def is_subscribed_coins(user_id):
                     pass
             return True
         return False
-
 def set_subscribed_coins(user_id, status, months=0):
     _ensure_coin_user(user_id)
     if USE_MONGO:
@@ -248,7 +212,6 @@ def set_subscribed_coins(user_id, status, months=0):
             else:
                 c.execute("UPDATE coin_data SET subscribed=?, expiry=NULL WHERE user_id=?", (1 if status else 0, user_id))
             c.commit()
-
 def get_subscription_expiry(user_id):
     if USE_MONGO:
         doc = sub_col.find_one({"user_id": user_id})
@@ -260,7 +223,6 @@ def get_subscription_expiry(user_id):
             if row:
                 return row[0]
     return None
-
 def has_active_subscription(user_id):
     if is_subscribed_coins(user_id):
         return True
@@ -270,7 +232,6 @@ def has_active_subscription(user_id):
     if is_unlimited(user_id):
         return True
     return False
-
 def set_user_subscription_time(user_id, duration_hours, key=None):
     expires = time.time() + duration_hours * 3600
     if USE_MONGO:
@@ -279,7 +240,6 @@ def set_user_subscription_time(user_id, duration_hours, key=None):
         with sqlite3.connect(db_path) as c:
             c.execute("INSERT OR REPLACE INTO user_subscriptions (user_id, expires, duration, key) VALUES (?,?,?,?)", (user_id, expires, duration_hours, key))
             c.commit()
-
 def get_subscription_display(user_id):
     if has_active_subscription(user_id):
         expiry = get_subscription_expiry(user_id)
@@ -315,7 +275,6 @@ def get_subscription_display(user_id):
             return "⏱️ **Subscription:** Unlimited"
         return "⏱️ **Subscription:** Active"
     return "❌ No active subscription"
-
 def check_and_deduct_coins(chat_id, amount, feature_name):
     if has_active_subscription(chat_id):
         return True
@@ -326,7 +285,6 @@ def check_and_deduct_coins(chat_id, amount, feature_name):
     deduct_coins(chat_id, amount)
     bot.send_message(chat_id, f"✅ {amount} coins deducted for {feature_name}. Remaining: {get_user_coins(chat_id)}", parse_mode='Markdown')
     return True
-
 def get_coin_display(chat_id):
     if has_active_subscription(chat_id):
         return "🪙 **Unlimited** (Active Subscription)"
@@ -335,12 +293,10 @@ def get_coin_display(chat_id):
     return f"🪙 **Coins:** {coins}{' (Unlimited)' if unlimited else ''}"
 
 # ═══════════════════════════════════════════════════════════
-# 🔑 TIME KEY & TRIAL FUNCTIONS
+# 🔑 TIME KEY & TRIAL
 # ═══════════════════════════════════════════════════════════
-
 def generate_time_key():
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=16))
-
 def create_time_key(duration_hours, created_by):
     key = generate_time_key()
     expires = time.time() + duration_hours * 3600
@@ -351,7 +307,6 @@ def create_time_key(duration_hours, created_by):
             c.execute("INSERT INTO time_keys (key, expires, duration, used, user_id, created_by, created_at) VALUES (?,?,?,0,?,?,?)", (key, expires, duration_hours, None, created_by, time.time()))
             c.commit()
     return key
-
 def use_time_key(key, user_id):
     if USE_MONGO:
         doc = time_keys_col.find_one({"key": key})
@@ -374,10 +329,8 @@ def use_time_key(key, user_id):
         c.commit()
         set_user_subscription_time(user_id, row[1], key)
         return True, "Key activated"
-
 def generate_trial_key():
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=12))
-
 def create_trial_key(user_id=None, minutes=10):
     key = generate_trial_key()
     expires = time.time() + minutes * 60
@@ -388,7 +341,6 @@ def create_trial_key(user_id=None, minutes=10):
             c.execute("INSERT INTO trial_keys (key, expires, used, user_id, created_at) VALUES (?,?,0,?,?)", (key, expires, user_id, time.time()))
             c.commit()
     return key
-
 def use_trial_key(key, user_id):
     if USE_MONGO:
         doc = trial_keys_col.find_one({"key": key})
@@ -413,40 +365,34 @@ def use_trial_key(key, user_id):
         return True, "Success"
 
 # ═══════════════════════════════════════════════════════════
-# 💳 SUBSCRIPTION SETTINGS (Stars/Money) - NEW PRICES FIXED
+# 💳 SUBSCRIPTION SETTINGS (NEW PRICES)
 # ═══════════════════════════════════════════════════════════
-
 SUBSCRIPTION_DURATIONS = {
     "1_day": 24, "5_days": 120, "1_week": 168, "3_weeks": 504,
     "5_weeks": 840, "7_weeks": 1176, "12_weeks": 2016,
     "14_weeks": 2352,
 }
-
 SUBSCRIPTION_STARS = {
     "1_day": 30, "5_days": 130, "1_week": 200, "3_weeks": 250,
     "5_weeks": 300, "7_weeks": 330, "12_weeks": 1050,
     "14_weeks": 1250,
 }
-
 SUBSCRIPTION_MONEY = {
     "1_day": "30 Pesos | $1", "5_days": "130 Pesos | $3",
     "1_week": "200 Pesos | $4", "3_weeks": "250 Pesos | $5",
     "5_weeks": "300 Pesos | $6", "7_weeks": "330 Pesos | $7",
     "12_weeks": "1,050 Pesos | $13", "14_weeks": "1,250 Pesos | $17",
 }
-
 PAYMENT_METHODS = {
     "paypal": {"label": "💳 PayPal", "details": "📧 Email: markryanmanoguido867@gmail.com"},
     "paymaya": {"label": "📱 PayMaya", "details": "📱 Number: 09281630511"},
     "gcash_to_paymaya": {"label": "🔄 GCash to PayMaya", "details": "📌 DM @Maarkryan for QR"}
 }
-
 PENDING_SUBSCRIPTIONS = {}
 
 # ═══════════════════════════════════════════════════════════
-# 🌟 STARS BALANCE FUNCTIONS
+# 🌟 STARS BALANCE
 # ═══════════════════════════════════════════════════════════
-
 def add_stars_balance(amount):
     if USE_MONGO:
         stars_col.update_one({}, {"$inc": {"total_stars": amount}}, upsert=True)
@@ -456,7 +402,6 @@ def add_stars_balance(amount):
             if c.rowcount == 0:
                 c.execute("INSERT INTO stars_balance (total_stars) VALUES (?)", (amount,))
             c.commit()
-
 def get_stars_balance():
     if USE_MONGO:
         doc = stars_col.find_one({})
@@ -464,7 +409,6 @@ def get_stars_balance():
     with sqlite3.connect(db_path) as c:
         row = c.execute("SELECT total_stars FROM stars_balance").fetchone()
         return row[0] if row else 0
-
 def reset_stars_balance():
     if USE_MONGO:
         stars_col.update_one({}, {"$set": {"total_stars": 0}}, upsert=True)
@@ -478,21 +422,112 @@ def reset_stars_balance():
 # ═══════════════════════════════════════════════════════════
 # 🛡️ ORIGINAL GLITCHYNxMARK FUNCTIONS (UNTOUCHED)
 # ═══════════════════════════════════════════════════════════
+def track_user(user_id):
+    if user_id in TRACKED_USERS_CACHE: return
+    TRACKED_USERS_CACHE.add(user_id)
+    if USE_MONGO:
+        try: users_col.update_one({"user_id": user_id}, {"$set": {"user_id": user_id}}, upsert=True)
+        except: pass
+    else:
+        with sqlite3.connect(db_path) as c:
+            c.execute("INSERT OR IGNORE INTO bot_users (user_id) VALUES (?)", (user_id,))
+            c.commit()
+def get_total_users(): return len(TRACKED_USERS_CACHE)
+def get_all_tracked_users(): return list(TRACKED_USERS_CACHE)
+def is_admin(user_id): return user_id in ADMIN_IDS
+def add_admin(user_id):
+    ADMIN_IDS.add(user_id)
+    if USE_MONGO:
+        try: admins_col.update_one({"user_id": user_id}, {"$set": {"user_id": user_id}}, upsert=True)
+        except: pass
+    else:
+        with sqlite3.connect(db_path) as c:
+            c.execute("INSERT OR IGNORE INTO bot_admins (user_id) VALUES (?)", (user_id,))
+            c.commit()
+    return True
+def remove_admin(user_id):
+    ADMIN_IDS.discard(user_id)
+    if USE_MONGO:
+        try: admins_col.delete_one({"user_id": user_id})
+        except: pass
+    else:
+        with sqlite3.connect(db_path) as c:
+            c.execute("DELETE FROM bot_admins WHERE user_id=?", (user_id,))
+            c.commit()
+    return True
+def get_all_admins(): return list(ADMIN_IDS)
+def is_premium(user_id):
+    if is_admin(user_id): return True
+    if USE_MONGO:
+        try: return premium_col.find_one({"user_id": user_id}) is not None
+        except: return False
+    else:
+        with sqlite3.connect(db_path) as c:
+            return bool(c.execute("SELECT user_id FROM premium_users WHERE user_id=?", (user_id,)).fetchone())
+def approve_premium(user_id):
+    if USE_MONGO:
+        try: premium_col.update_one({"user_id": user_id}, {"$set": {"user_id": user_id, "approved_at": datetime.now()}}, upsert=True)
+        except: pass
+    else:
+        with sqlite3.connect(db_path) as c:
+            c.execute("INSERT OR REPLACE INTO premium_users (user_id) VALUES (?)", (user_id,))
+            c.commit()
+def revoke_premium(user_id):
+    if USE_MONGO:
+        try: premium_col.delete_one({"user_id": user_id})
+        except: pass
+    else:
+        with sqlite3.connect(db_path) as c:
+            c.execute("DELETE FROM premium_users WHERE user_id=?", (user_id,))
+            c.commit()
+def get_all_approved():
+    if USE_MONGO:
+        try: return [(doc["user_id"],) for doc in premium_col.find({}, {"user_id": 1})]
+        except: return []
+    else:
+        with sqlite3.connect(db_path) as c:
+            return c.execute("SELECT user_id FROM premium_users").fetchall()
+def save_state(user_id: int, state: dict):
+    if USE_MONGO:
+        try: states_col.update_one({"user_id": user_id}, {"$set": {"state_json": json.dumps(state), "updated_at": datetime.now()}}, upsert=True)
+        except: pass
+    else:
+        with sqlite3.connect(db_path) as c:
+            c.execute("INSERT OR REPLACE INTO bot_states (user_id, state_json, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)", (user_id, json.dumps(state)))
+            c.commit()
+def load_state(user_id: int) -> Optional[dict]:
+    if USE_MONGO:
+        try:
+            doc = states_col.find_one({"user_id": user_id})
+            if doc and "state_json" in doc: return json.loads(doc["state_json"])
+        except: pass
+    else:
+        with sqlite3.connect(db_path) as c:
+            row = c.execute("SELECT state_json FROM bot_states WHERE user_id=?", (user_id,)).fetchone()
+            if row:
+                try: return json.loads(row[0])
+                except: pass
+    return None
+def delete_state(user_id: int):
+    if USE_MONGO:
+        try: states_col.delete_one({"user_id": user_id})
+        except: pass
+    else:
+        with sqlite3.connect(db_path) as c:
+            c.execute("DELETE FROM bot_states WHERE user_id=?", (user_id,))
+            c.commit()
 
 def clean_str(text):
     if not text: return "Unknown"
     return str(text).replace('_', '-').replace('*', '•').replace('`', "'").replace('[', '(').replace(']', ')')
-
 def make_xor_key(uid: str) -> bytes:
     chars = list(str(uid or ""))
     if len(chars) >= 9: chars[1], chars[8] = chars[8], chars[1]
     if len(chars) >= 3: chars.pop(2)
     if len(chars) >= 5: chars.append(chars[4])
     return "".join(chars).encode("utf-8") or b"0"
-
 def xor_bytes(data: bytes, key: bytes) -> bytes:
     return bytes(data[i] ^ key[i % len(key)] for i in range(len(data)))
-
 def decompress(data: bytes):
     if HAS_BROTLI:
         try: return brotli.decompress(data)
@@ -501,15 +536,12 @@ def decompress(data: bytes):
         try: return zlib.decompress(data, *args)
         except: pass
     return None
-
 def decrypt_aes(data: bytes, key: bytes):
     if not HAS_CRYPTO: return None
     try: return unpad(AES.new(key[:16], AES.MODE_CBC, b"\x00" * 16).decrypt(data), 16)
     except: return None
-
 def _md5(text: str) -> bytes: return hashlib.md5(str(text).encode()).digest()
 def _sha1(text: str) -> bytes: return hashlib.sha1(str(text).encode()).digest()[:16]
-
 def build_aes_keys(uid: str, password: str = None, email: str = None) -> list:
     keys = [_md5("olzhas_carparking")]
     if password: keys.extend([_md5(password), _sha1(password)])
@@ -744,9 +776,8 @@ def build_payload(record: Dict[str, Any], uid: str, original: Optional[Dict[str,
     return base64.b64encode(encrypted).decode("ascii")
 
 # ═══════════════════════════════════════════════════════════
-# ⚙️ SyncCPMNuker (ORIGINAL - UNTOUCHED)
+# ⚙️ SyncCPMNuker (ORIGINAL)
 # ═══════════════════════════════════════════════════════════
-
 class SyncCPMNuker:
     def __init__(self): self.cache = {}
     def _ck(self, uid: int, email: Optional[str] = None) -> str:
@@ -1071,7 +1102,6 @@ nuker = SyncCPMNuker()
 # ═══════════════════════════════════════════════════════════
 # 🚗 CAR INJECTION ENGINE (ORIGINAL - UNTOUCHED)
 # ═══════════════════════════════════════════════════════════
-
 _source_cars_cache = None
 _source_cars_cache_time = 0
 _source_cars_lock = threading.Lock()
@@ -1314,9 +1344,8 @@ def background_inject_all_cars(chat_id, email, password, msg_id):
         pass
 
 # ═══════════════════════════════════════════════════════════
-# 🧩 CHUNKED BULK CLONE - FROM GLITCHYNxMARK (OPTIMIZED FOR RENDER)
+# 🧩 CHUNKED BULK CLONE - OPTIMIZED FOR RENDER
 # ═══════════════════════════════════════════════════════════
-
 def full_account_clone(src_record, src_cars, tgt_email, tgt_pass, source_token=None, progress_callback=None):
     try:
         t_res = nuker.login(tgt_email, tgt_pass)
@@ -1340,10 +1369,9 @@ def full_account_clone(src_record, src_cars, tgt_email, tgt_pass, source_token=N
         
         def process_car(car):
             if not isinstance(car, dict): return False
-            time.sleep(0.8)
+            time.sleep(0.8)  # Optimized delay
             return cpm1_clone_car(t_auth, car, t_uid, token_source=source_token)
 
-        # OPTIMIZED FOR RENDER: 5 workers, 0.8s delay
         with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
             futures = {executor.submit(process_car, car): car for car in src_cars}
             for future in concurrent.futures.as_completed(futures):
@@ -1469,11 +1497,9 @@ def background_bulk_clone(chat_id, src_email, src_pass, count, msg_id):
             t.start()
             time.sleep(1)
         
-        # Wait for all threads to finish
         for t in threads:
             t.join(timeout=300)
         
-        # Final update after all done
         final_text = "📦 BULK CLONE REPORT\n┣━━━━━━━━━━━━━━━━━━┫\n\n" + "\n\n".join(sorted(res_list)) + "\n\n👑 Overseer Panel"
         try: bot.edit_message_text(final_text, chat_id, msg_id, reply_markup=create_admin_keyboard())
         except: pass
@@ -1484,7 +1510,6 @@ def background_bulk_clone(chat_id, src_email, src_pass, count, msg_id):
 # ═══════════════════════════════════════════════════════════
 # 🤖 UI & KEYBOARDS
 # ═══════════════════════════════════════════════════════════
-
 def get_role_badge(chat_id):
     if is_admin(chat_id): return "👑 Admin"
     if is_premium(chat_id): return "💎 Premium User"
@@ -1632,7 +1657,6 @@ def safe_send_dashboard(chat_id, custom_top_msg=None, force_refresh=False, is_ca
 # ═══════════════════════════════════════════════════════════
 # 📋 ADMIN COMMANDS
 # ═══════════════════════════════════════════════════════════
-
 @bot.message_handler(commands=['addcoins'])
 def addcoins_command(message):
     chat_id = message.chat.id
@@ -1737,7 +1761,6 @@ def withdraw_stars_command(message):
 # ═══════════════════════════════════════════════════════════
 # 🚀 START & MENU COMMANDS
 # ═══════════════════════════════════════════════════════════
-
 user_sessions = {}
 user_states = {}
 
@@ -1775,7 +1798,6 @@ def admin_command(message):
 # ═══════════════════════════════════════════════════════════
 # 🎯 MESSAGE ROUTER
 # ═══════════════════════════════════════════════════════════
-
 @bot.message_handler(func=lambda message: True)
 def handle_all_messages(message):
     try:
@@ -2051,7 +2073,6 @@ def handle_all_messages(message):
 # ═══════════════════════════════════════════════════════════
 # 🎯 BUTTON HANDLER
 # ═══════════════════════════════════════════════════════════
-
 def premium_required(call):
     chat_id = call.message.chat.id
     if not is_premium(chat_id):
@@ -2426,20 +2447,6 @@ def handle_callback(call):
         save_state(chat_id, user_states[chat_id])
         return
 
-    # Stars payment confirmation (from successful_payment handler)
-    if data.startswith("stars_paid_"):
-        parts = data.split("_")
-        if len(parts) >= 3:
-            user_id = int(parts[2])
-            duration_key = parts[3] if len(parts) > 3 else "1_week"
-            duration_hours = SUBSCRIPTION_DURATIONS.get(duration_key, 168)
-            set_user_subscription_time(user_id, duration_hours, f"stars_{duration_key}")
-            star_cost = SUBSCRIPTION_STARS.get(duration_key, 0)
-            add_stars_balance(star_cost)
-            bot.send_message(user_id, f"✅ Subscription activated for {duration_key.replace('_',' ').title()}!")
-            bot.send_message(chat_id, f"✅ Stars payment processed for user {user_id}.")
-        return
-
     bot.answer_callback_query(call.id, "✅ Done")
 
 def process_time_key_input(message):
@@ -2453,16 +2460,46 @@ def process_time_key_input(message):
     safe_send_dashboard(chat_id, force_refresh=True)
 
 # ═══════════════════════════════════════════════════════════
-# 🚀 START THE BOT
+# 💰 TELEGRAM STARS PAYMENT HANDLERS
 # ═══════════════════════════════════════════════════════════
+@bot.pre_checkout_query_handler(func=lambda query: True)
+def pre_checkout_query_handler(query):
+    bot.answer_pre_checkout_query(query.id, ok=True)
 
+@bot.message_handler(content_types=['successful_payment'])
+def successful_payment_handler(message):
+    chat_id = message.chat.id
+    payment = message.successful_payment
+    payload = payment.invoice_payload  # e.g., "stars_payment_123456789_1_week"
+    try:
+        rest = payload.replace("stars_payment_", "")
+        user_id_str, duration_key = rest.split("_", 1)
+        user_id = int(user_id_str)
+    except Exception as e:
+        bot.send_message(chat_id, f"❌ Payment processing error: {e}")
+        return
+
+    if duration_key not in SUBSCRIPTION_DURATIONS:
+        bot.send_message(chat_id, "❌ Unknown duration.")
+        return
+
+    hours = SUBSCRIPTION_DURATIONS[duration_key]
+    set_user_subscription_time(user_id, hours, f"stars_{duration_key}")
+    star_cost = SUBSCRIPTION_STARS.get(duration_key, 0)
+    add_stars_balance(star_cost)
+
+    bot.send_message(chat_id, f"✅ Your subscription for {duration_key.replace('_',' ').title()} is now active!\nThank you for your Stars payment (⭐{star_cost}).")
+    safe_send_dashboard(chat_id, custom_top_msg="✅ Subscription Activated!", force_refresh=True)
+
+# ═══════════════════════════════════════════════════════════
+# 🚀 BOT POLLING LOOP - DITO NAGHAHANAP NG MESSAGES
+# ═══════════════════════════════════════════════════════════
 if __name__ == "__main__":
     print("="*60)
     print("☠️ 𝙈𝘼𝙍𝙆𝘾𝙋𝙈1𝙏𝙊𝙊𝙇𝙎 - CPM1 ULTIMATE ☠️")
     print("="*60)
     print("✅ Bot is running!")
     print("👑 Admins: 8254935096, 6531314640")
-    print("🔑 Keys: MARKMWEHEHETOOL7077, MARKK, TANNER")
     print("💎 Subscription + Coin System Active")
     print("🚀 Optimized for Render Free Tier")
     print("="*60)
