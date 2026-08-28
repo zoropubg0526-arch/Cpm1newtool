@@ -3,7 +3,7 @@
 
 """
 ☠️☠️☠️ 𝙈𝘼𝙍𝙆𝘾𝙋𝙈1𝙏𝙊𝙊𝙇𝙎 - CPM1 ULTIMATE ☠️☠️☠️
-FIXED: Subscription screenshot handler, group log forwarding
+FIXED: Subscription group log with confirm/decline buttons, complete details
 UNTOUCHED: All payload formats, encryption, and core functions (100% original)
 """
 
@@ -34,7 +34,7 @@ import urllib3
 from flask import Flask, jsonify
 
 # ═══════════════════════════════════════════════════════════
-# 🌐 FLASK WEB SERVER (Minimal)
+# 🌐 FLASK WEB SERVER
 # ═══════════════════════════════════════════════════════════
 app = Flask(__name__)
 @app.route('/')
@@ -85,7 +85,7 @@ GAME_HEADERS = {
 }
 
 # ═══════════════════════════════════════════════════════════
-# 📢 GROUP LOG ID (para sa mga screenshot ng subscription)
+# 📢 GROUP LOG ID
 # ═══════════════════════════════════════════════════════════
 GROUP_LOG_ID = -1004441134033
 
@@ -334,9 +334,18 @@ SUBSCRIPTION_MONEY = {
     "12_weeks": "1,050 Pesos | $13", "14_weeks": "1,250 Pesos | $17",
 }
 PAYMENT_METHODS = {
-    "paypal": {"label": "💳 PayPal", "details": "📧 Email: markryanmanoguido867@gmail.com"},
-    "paymaya": {"label": "📱 PayMaya", "details": "📱 Number: 09281630511"},
-    "gcash_to_paymaya": {"label": "🔄 GCash to PayMaya", "details": "📌 DM @Maarkryan for QR"}
+    "paypal": {
+        "label": "💳 PayPal",
+        "details": "📧 **Email:** `markryanmanoguid867@gmail.com`\n👤 **Name:** MARK RYAN MANOGUID\n📌 Please screenshot the payment."
+    },
+    "paymaya": {
+        "label": "📱 PayMaya",
+        "details": "📱 **Number:** `09281630511`\n👤 **Name:** MARK RYAN MANOGUID\n📌 Please screenshot the payment."
+    },
+    "gcash_to_paymaya": {
+        "label": "🔄 GCash to PayMaya",
+        "details": "📌 DM @Maarkryan so he can send the QR code.\n📌 Please screenshot the payment."
+    }
 }
 PENDING_SUBSCRIPTIONS = {}
 
@@ -1475,6 +1484,13 @@ def create_payment_method_keyboard():
     markup.row(types.InlineKeyboardButton("🔙 Back", callback_data="menu_subscription"))
     return markup
 
+def create_subscription_confirm_keyboard(user_id, duration_key, payment_method):
+    markup = types.InlineKeyboardMarkup(row_width=2)
+    btn1 = types.InlineKeyboardButton("✅ Confirm", callback_data=f"sub_confirm_{user_id}_{duration_key}_{payment_method}")
+    btn2 = types.InlineKeyboardButton("❌ Decline", callback_data=f"sub_decline_{user_id}_{duration_key}_{payment_method}")
+    markup.row(btn1, btn2)
+    return markup
+
 def safe_send_dashboard(chat_id, custom_top_msg=None, force_refresh=False, is_callback=False, message_id=None):
     try:
         session_data = user_sessions.get(chat_id, {})
@@ -1666,14 +1682,14 @@ def admin_command(message):
         pass
 
 # ═══════════════════════════════════════════════════════════
-# 🎯 MESSAGE ROUTER - FIXED PHOTO HANDLER
+# 🎯 MESSAGE ROUTER - FIXED PHOTO HANDLER WITH CONFIRM/DECLINE
 # ═══════════════════════════════════════════════════════════
 @bot.message_handler(func=lambda message: True, content_types=['text', 'photo', 'document'])
 def handle_all_messages(message):
     try:
         chat_id = message.chat.id
 
-        # ✅ FIX: Handle subscription photo FIRST before anything else
+        # ✅ FIX: Handle subscription photo FIRST with confirm/decline buttons
         if chat_id in user_states and user_states[chat_id].get('awaiting_subscription_photo'):
             state = user_states[chat_id]
             msg_id = state.get('msg_id')
@@ -1682,30 +1698,94 @@ def handle_all_messages(message):
             
             if message.photo:
                 photo = message.photo[-1].file_id
-                caption = f"📸 Payment Screenshot\nUser: {chat_id}\nMethod: {payment_method}\nDuration: {duration_key}"
+                # Get user details
                 try:
-                    bot.send_photo(GROUP_LOG_ID, photo, caption=caption)
+                    user = bot.get_chat(chat_id)
+                    username = user.username or "No username"
+                    first_name = user.first_name or "Unknown"
+                except:
+                    username = "Unknown"
+                    first_name = "Unknown"
+                
+                # Get pending subscription data
+                sub_data = PENDING_SUBSCRIPTIONS.get(chat_id, {})
+                duration_key = sub_data.get('duration_key', duration_key)
+                payment_method = sub_data.get('payment_method', payment_method)
+                duration_hours = sub_data.get('duration_hours', 24)
+                stars = SUBSCRIPTION_STARS.get(duration_key, 0)
+                price = SUBSCRIPTION_MONEY.get(duration_key, "N/A")
+                
+                # Build detailed caption
+                caption = (
+                    f"📸 **NEW SUBSCRIPTION REQUEST**\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"👤 **User:** {first_name}\n"
+                    f"🆔 **Username:** @{username}\n"
+                    f"🆔 **ID:** `{chat_id}`\n"
+                    f"⏱️ **Duration:** {duration_key.replace('_', ' ').title()}\n"
+                    f"⭐ **Stars:** {stars}\n"
+                    f"💰 **Price:** {price}\n"
+                    f"💳 **Payment:** {payment_method.upper()}\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"📌 Please verify the payment below."
+                )
+                
+                try:
+                    sent_msg = bot.send_photo(
+                        GROUP_LOG_ID,
+                        photo,
+                        caption=caption,
+                        parse_mode='Markdown',
+                        reply_markup=create_subscription_confirm_keyboard(chat_id, duration_key, payment_method)
+                    )
+                    if chat_id not in PENDING_SUBSCRIPTIONS:
+                        PENDING_SUBSCRIPTIONS[chat_id] = {}
+                    PENDING_SUBSCRIPTIONS[chat_id]['log_message_id'] = sent_msg.message_id
                     bot.send_message(chat_id, "✅ Screenshot received! Admin will verify your payment shortly.")
                 except Exception as e:
                     bot.send_message(chat_id, f"❌ Failed to send to admin logs. Please contact admin directly.\nError: {e}")
+                
                 # Clear state
                 del user_states[chat_id]
                 delete_state(chat_id)
-                if chat_id in PENDING_SUBSCRIPTIONS:
-                    del PENDING_SUBSCRIPTIONS[chat_id]
                 return
             elif message.document:
                 doc = message.document.file_id
-                caption = f"📸 Payment Screenshot (File)\nUser: {chat_id}\nMethod: {payment_method}\nDuration: {duration_key}"
                 try:
-                    bot.send_document(GROUP_LOG_ID, doc, caption=caption)
-                    bot.send_message(chat_id, "✅ Screenshot received! Admin will verify.")
+                    user = bot.get_chat(chat_id)
+                    username = user.username or "No username"
+                    first_name = user.first_name or "Unknown"
                 except:
-                    bot.send_message(chat_id, "❌ Failed to send file to admin logs.")
+                    username = "Unknown"
+                    first_name = "Unknown"
+                sub_data = PENDING_SUBSCRIPTIONS.get(chat_id, {})
+                duration_key = sub_data.get('duration_key', duration_key)
+                payment_method = sub_data.get('payment_method', payment_method)
+                stars = SUBSCRIPTION_STARS.get(duration_key, 0)
+                price = SUBSCRIPTION_MONEY.get(duration_key, "N/A")
+                caption = (
+                    f"📸 **NEW SUBSCRIPTION REQUEST (FILE)**\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"👤 {first_name} (@{username})\n"
+                    f"🆔 ID: `{chat_id}`\n"
+                    f"⏱️ {duration_key.replace('_', ' ').title()}\n"
+                    f"⭐ {stars} Stars | 💰 {price}\n"
+                    f"💳 {payment_method.upper()}\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━"
+                )
+                sent_msg = bot.send_document(
+                    GROUP_LOG_ID,
+                    doc,
+                    caption=caption,
+                    parse_mode='Markdown',
+                    reply_markup=create_subscription_confirm_keyboard(chat_id, duration_key, payment_method)
+                )
+                if chat_id not in PENDING_SUBSCRIPTIONS:
+                    PENDING_SUBSCRIPTIONS[chat_id] = {}
+                PENDING_SUBSCRIPTIONS[chat_id]['log_message_id'] = sent_msg.message_id
+                bot.send_message(chat_id, "✅ Screenshot received! Admin will verify.")
                 del user_states[chat_id]
                 delete_state(chat_id)
-                if chat_id in PENDING_SUBSCRIPTIONS:
-                    del PENDING_SUBSCRIPTIONS[chat_id]
                 return
             else:
                 bot.send_message(chat_id, "❌ Please send a photo (screenshot) of your payment.")
@@ -1983,7 +2063,7 @@ def handle_all_messages(message):
         pass
 
 # ═══════════════════════════════════════════════════════════
-# 🎯 BUTTON HANDLER
+# 🎯 BUTTON HANDLER - INCLUDING SUBSCRIPTION CONFIRM/DECLINE
 # ═══════════════════════════════════════════════════════════
 def premium_required(call):
     chat_id = call.message.chat.id
@@ -1992,6 +2072,22 @@ def premium_required(call):
         except: pass
         return True
     return False
+
+# Helper to parse confirm/decline callback
+def _parse_sub_callback(rest):
+    try:
+        user_id = int(rest.split("_", 1)[0])
+        remainder = rest.split("_", 1)[1]
+    except Exception:
+        return None, None, None
+    for dur in SUBSCRIPTION_DURATIONS:
+        if remainder.startswith(dur + "_"):
+            pm = remainder[len(dur) + 1:]
+            if pm in PAYMENT_METHODS:
+                return user_id, dur, pm
+        if remainder == dur and dur in PAYMENT_METHODS:
+            return user_id, dur, dur
+    return None, None, None
 
 @bot.callback_query_handler(func=lambda call: True)
 def handle_callback(call):
@@ -2015,6 +2111,109 @@ def handle_callback(call):
         try: bot.answer_callback_query(call.id)
         except: pass
 
+    # ====== SUBSCRIPTION CONFIRM / DECLINE ======
+    if data.startswith("sub_confirm_"):
+        rest = data[len("sub_confirm_"):]
+        user_id, duration_key, payment_method = _parse_sub_callback(rest)
+        if not user_id:
+            bot.answer_callback_query(call.id, "❌ Invalid data!", show_alert=True)
+            return
+        if payment_method not in PAYMENT_METHODS:
+            bot.answer_callback_query(call.id, "❌ Invalid payment method!", show_alert=True)
+            return
+        duration_hours = SUBSCRIPTION_DURATIONS.get(duration_key, 24)
+        try:
+            user = bot.get_chat(user_id)
+            username = user.username or "No username"
+            first_name = user.first_name or "Unknown"
+        except Exception:
+            username = "Unknown"
+            first_name = "Unknown"
+        
+        # Create and activate time key for the user
+        time_key = create_time_key(duration_hours, chat_id)
+        if time_key in TIME_KEYS:
+            TIME_KEYS[time_key]["used"] = True
+            TIME_KEYS[time_key]["user_id"] = user_id
+        set_user_subscription_time(user_id, duration_hours, time_key)
+        
+        # Also store in PENDING_SUBSCRIPTIONS for display
+        if user_id not in user_sessions:
+            user_sessions[user_id] = {}
+        user_sessions[user_id]['logged_in'] = True
+        user_sessions[user_id]['is_time_key'] = True
+        
+        expires = get_subscription_expiry(user_id)
+        expires_str = datetime.fromtimestamp(expires).strftime("%Y-%m-%d %H:%M:%S") if expires else "Unknown"
+        
+        # Notify user
+        bot.send_message(
+            user_id,
+            f"✅ **SUBSCRIPTION CONFIRMED!**\n━━━━━━━━━━━━━━━━━━━━━\n🎉 Your subscription is now active!\n⏱️ Duration: {duration_key.replace('_', ' ').title()}\n📅 Expires: {expires_str}\n\n✅ You can now use all bot features!",
+            parse_mode='Markdown'
+        )
+        
+        # Update group log message
+        try:
+            log_msg_id = PENDING_SUBSCRIPTIONS.get(user_id, {}).get('log_message_id')
+            if log_msg_id:
+                bot.edit_message_caption(
+                    caption=f"✅ **SUBSCRIPTION CONFIRMED**\n━━━━━━━━━━━━━━━━━━━━━\n👤 {first_name} (@{username})\n🆔 ID: `{user_id}`\n⏱️ Duration: {duration_key.replace('_', ' ').title()}\n💳 Payment: {payment_method.upper()}\n🔑 Key: `{time_key}`\n✅ Confirmed by Admin",
+                    chat_id=GROUP_LOG_ID,
+                    message_id=log_msg_id,
+                    parse_mode='Markdown'
+                )
+                bot.edit_message_reply_markup(GROUP_LOG_ID, log_msg_id, reply_markup=None)
+        except Exception as e:
+            print(f"Failed to update log: {e}")
+        
+        bot.answer_callback_query(call.id, "✅ Subscription confirmed!", show_alert=True)
+        if user_id in PENDING_SUBSCRIPTIONS:
+            del PENDING_SUBSCRIPTIONS[user_id]
+        return
+
+    if data.startswith("sub_decline_"):
+        rest = data[len("sub_decline_"):]
+        user_id, duration_key, payment_method = _parse_sub_callback(rest)
+        if not user_id:
+            bot.answer_callback_query(call.id, "❌ Invalid data!", show_alert=True)
+            return
+        if payment_method not in PAYMENT_METHODS:
+            bot.answer_callback_query(call.id, "❌ Invalid payment method!", show_alert=True)
+            return
+        try:
+            user = bot.get_chat(user_id)
+            username = user.username or "No username"
+            first_name = user.first_name or "Unknown"
+        except Exception:
+            username = "Unknown"
+            first_name = "Unknown"
+        
+        bot.send_message(
+            user_id,
+            "❌ **SUBSCRIPTION DECLINED**\n━━━━━━━━━━━━━━━━━━━━━\n⚠️ Your payment could not be verified.\n📌 Please contact @Maarkryan for assistance.",
+            parse_mode='Markdown'
+        )
+        
+        try:
+            log_msg_id = PENDING_SUBSCRIPTIONS.get(user_id, {}).get('log_message_id')
+            if log_msg_id:
+                bot.edit_message_caption(
+                    caption=f"❌ **SUBSCRIPTION DECLINED**\n━━━━━━━━━━━━━━━━━━━━━\n👤 {first_name} (@{username})\n🆔 ID: `{user_id}`\n⏱️ Duration: {duration_key.replace('_', ' ').title()}\n💳 Payment: {payment_method.upper()}\n❌ Declined by Admin",
+                    chat_id=GROUP_LOG_ID,
+                    message_id=log_msg_id,
+                    parse_mode='Markdown'
+                )
+                bot.edit_message_reply_markup(GROUP_LOG_ID, log_msg_id, reply_markup=None)
+        except Exception as e:
+            print(f"Failed to update log: {e}")
+        
+        bot.answer_callback_query(call.id, "❌ Subscription declined!", show_alert=True)
+        if user_id in PENDING_SUBSCRIPTIONS:
+            del PENDING_SUBSCRIPTIONS[user_id]
+        return
+
+    # ====== REST OF CALLBACK HANDLERS (UNTOUCHED) ======
     if data == "menu_main":
         if chat_id in user_states: del user_states[chat_id]
         delete_state(chat_id)
