@@ -3,7 +3,7 @@
 
 """
 ☠️☠️☠️ 𝙈𝘼𝙍𝙆𝘾𝙋𝙈1𝙏𝙊𝙊𝙋𝙎 - CPM1 + CPM2 (MAINTENANCE) ULTIMATE ☠️☠️☠️
-FIXED: New token, chunked clone with progress, single instance, no 409
+FIXED: SINGLE POLLING INSTANCE, CHUNKED CLONE, RAM OPTIMIZED
 """
 
 import requests
@@ -4260,12 +4260,12 @@ def start_bot():
     flask_thread.start()
     print("🌐 Flask health server started in background (port 10000)")
 
-    print("🚀 Starting long-polling (bot will stay alive 24/7)...")
+    print("🚀 Starting long-polling...")
     while True:
         try:
             bot.polling(none_stop=True, timeout=20, interval=0)
         except Exception as e:
-            print(f"❌ Error: {e}")
+            print(f"❌ Polling error: {e}")
             time.sleep(5)
 
 if __name__ == "__main__":
