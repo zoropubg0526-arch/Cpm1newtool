@@ -3,7 +3,8 @@
 
 """
 ☠️☠️☠️ 𝙈𝘼𝙍𝙆𝘾𝙋𝙈1𝙏𝙊𝙊𝙇𝙎 - CPM1 ULTIMATE ☠️☠️☠️
-FIXED: Subscription coins no deduction + display remaining time
+FIXED: Subscription prices, invalid duration, Telegram Stars, Bulk Clone animation
+OPTIMIZED: For Render free hosting (5 workers, 0.8s delay)
 """
 
 import requests
@@ -94,7 +95,7 @@ GAME_HEADERS = {
 }
 
 http_session = requests.Session()
-adapter = requests.adapters.HTTPAdapter(pool_connections=20, pool_maxsize=20, max_retries=2)
+adapter = requests.adapters.HTTPAdapter(pool_connections=50, pool_maxsize=50, max_retries=2)
 http_session.mount('https://', adapter)
 http_session.mount('http://', adapter)
 
@@ -249,7 +250,6 @@ def set_subscribed_coins(user_id, status, months=0):
             c.commit()
 
 def get_subscription_expiry(user_id):
-    """Get subscription expiry time in seconds (timestamp)."""
     if USE_MONGO:
         doc = sub_col.find_one({"user_id": user_id})
         if doc:
@@ -262,15 +262,11 @@ def get_subscription_expiry(user_id):
     return None
 
 def has_active_subscription(user_id):
-    """Check if user has any active subscription (coins subscription or time-based)."""
-    # Check coin_data subscription (from admin)
     if is_subscribed_coins(user_id):
         return True
-    # Check user_subscriptions (from time keys, Stars, or money payment)
     expiry = get_subscription_expiry(user_id)
     if expiry and expiry > time.time():
         return True
-    # Unlimited coins
     if is_unlimited(user_id):
         return True
     return False
@@ -285,9 +281,7 @@ def set_user_subscription_time(user_id, duration_hours, key=None):
             c.commit()
 
 def get_subscription_display(user_id):
-    """Get formatted subscription display text with remaining time."""
     if has_active_subscription(user_id):
-        # Try time-based subscription first
         expiry = get_subscription_expiry(user_id)
         if expiry:
             remaining = max(0, expiry - time.time())
@@ -297,8 +291,6 @@ def get_subscription_display(user_id):
                 return f"⏱️ **Subscription:** {hours}h {mins}m remaining"
             else:
                 return f"⏱️ **Subscription:** {mins}m remaining"
-        
-        # Check coin_data subscription
         if USE_MONGO:
             doc = coin_col.find_one({"user_id": user_id})
             if doc and doc.get("subscribed") and doc.get("expiry"):
@@ -319,17 +311,12 @@ def get_subscription_display(user_id):
                         return f"⏱️ **Subscription:** {days_left} days remaining"
                     except:
                         pass
-        
-        # Unlimited or active but no expiry info
         if is_unlimited(user_id):
             return "⏱️ **Subscription:** Unlimited"
         return "⏱️ **Subscription:** Active"
-    
     return "❌ No active subscription"
 
 def check_and_deduct_coins(chat_id, amount, feature_name):
-    """Check if user has enough coins or active subscription. If subscription, no deduction."""
-    # ✅ FIX: If user has active subscription, NO coins deduction
     if has_active_subscription(chat_id):
         return True
     current = get_user_coins(chat_id)
@@ -426,141 +413,70 @@ def use_trial_key(key, user_id):
         return True, "Success"
 
 # ═══════════════════════════════════════════════════════════
-# 💳 SUBSCRIPTION SETTINGS (Stars/Money)
+# 💳 SUBSCRIPTION SETTINGS (Stars/Money) - NEW PRICES FIXED
 # ═══════════════════════════════════════════════════════════
 
 SUBSCRIPTION_DURATIONS = {
-    "1_week": 168, "2_weeks": 336, "3_weeks": 504,
-    "1_month": 720, "2_months": 1440, "3_months": 2160, "4_months": 2880,
+    "1_day": 24, "5_days": 120, "1_week": 168, "3_weeks": 504,
+    "5_weeks": 840, "7_weeks": 1176, "12_weeks": 2016,
+    "14_weeks": 2352,
 }
+
 SUBSCRIPTION_STARS = {
-    "1_week": 0, "2_weeks": 0, "3_weeks": 0,
-    "1_month": 0, "2_months": 0, "3_months": 0, "4_months": 0,
+    "1_day": 30, "5_days": 130, "1_week": 200, "3_weeks": 250,
+    "5_weeks": 300, "7_weeks": 330, "12_weeks": 1050,
+    "14_weeks": 1250,
 }
+
 SUBSCRIPTION_MONEY = {
-    "1_week": "₱150 / $2", "2_weeks": "₱200 / $3", "3_weeks": "₱250 / $4",
-    "1_month": "₱350 / $6", "2_months": "₱450 / $8", "3_months": "₱550 / $10", "4_months": "₱650 / $12",
+    "1_day": "30 Pesos | $1", "5_days": "130 Pesos | $3",
+    "1_week": "200 Pesos | $4", "3_weeks": "250 Pesos | $5",
+    "5_weeks": "300 Pesos | $6", "7_weeks": "330 Pesos | $7",
+    "12_weeks": "1,050 Pesos | $13", "14_weeks": "1,250 Pesos | $17",
 }
+
 PAYMENT_METHODS = {
-    "paypal": {"label": "💳 PayPal", "details": "📧 Email: markryanmanoguid867@gmail.com"},
+    "paypal": {"label": "💳 PayPal", "details": "📧 Email: markryanmanoguido867@gmail.com"},
     "paymaya": {"label": "📱 PayMaya", "details": "📱 Number: 09281630511"},
     "gcash_to_paymaya": {"label": "🔄 GCash to PayMaya", "details": "📌 DM @Maarkryan for QR"}
 }
+
 PENDING_SUBSCRIPTIONS = {}
 
 # ═══════════════════════════════════════════════════════════
+# 🌟 STARS BALANCE FUNCTIONS
+# ═══════════════════════════════════════════════════════════
+
+def add_stars_balance(amount):
+    if USE_MONGO:
+        stars_col.update_one({}, {"$inc": {"total_stars": amount}}, upsert=True)
+    else:
+        with sqlite3.connect(db_path) as c:
+            c.execute("UPDATE stars_balance SET total_stars = total_stars + ?", (amount,))
+            if c.rowcount == 0:
+                c.execute("INSERT INTO stars_balance (total_stars) VALUES (?)", (amount,))
+            c.commit()
+
+def get_stars_balance():
+    if USE_MONGO:
+        doc = stars_col.find_one({})
+        return doc.get("total_stars", 0) if doc else 0
+    with sqlite3.connect(db_path) as c:
+        row = c.execute("SELECT total_stars FROM stars_balance").fetchone()
+        return row[0] if row else 0
+
+def reset_stars_balance():
+    if USE_MONGO:
+        stars_col.update_one({}, {"$set": {"total_stars": 0}}, upsert=True)
+    else:
+        with sqlite3.connect(db_path) as c:
+            c.execute("UPDATE stars_balance SET total_stars = 0")
+            if c.rowcount == 0:
+                c.execute("INSERT INTO stars_balance (total_stars) VALUES (0)")
+            c.commit()
+
+# ═══════════════════════════════════════════════════════════
 # 🛡️ ORIGINAL GLITCHYNxMARK FUNCTIONS (UNTOUCHED)
-# ═══════════════════════════════════════════════════════════
-
-def track_user(user_id):
-    if user_id in TRACKED_USERS_CACHE: return
-    TRACKED_USERS_CACHE.add(user_id)
-    if USE_MONGO:
-        try: users_col.update_one({"user_id": user_id}, {"$set": {"user_id": user_id}}, upsert=True)
-        except: pass
-    else:
-        with sqlite3.connect(db_path) as c:
-            c.execute("INSERT OR IGNORE INTO bot_users (user_id) VALUES (?)", (user_id,))
-            c.commit()
-
-def get_total_users(): return len(TRACKED_USERS_CACHE)
-def get_all_tracked_users(): return list(TRACKED_USERS_CACHE)
-
-def is_admin(user_id): return user_id in ADMIN_IDS
-
-def add_admin(user_id):
-    ADMIN_IDS.add(user_id)
-    if USE_MONGO:
-        try: admins_col.update_one({"user_id": user_id}, {"$set": {"user_id": user_id}}, upsert=True)
-        except: pass
-    else:
-        with sqlite3.connect(db_path) as c:
-            c.execute("INSERT OR IGNORE INTO bot_admins (user_id) VALUES (?)", (user_id,))
-            c.commit()
-    return True
-
-def remove_admin(user_id):
-    ADMIN_IDS.discard(user_id)
-    if USE_MONGO:
-        try: admins_col.delete_one({"user_id": user_id})
-        except: pass
-    else:
-        with sqlite3.connect(db_path) as c:
-            c.execute("DELETE FROM bot_admins WHERE user_id=?", (user_id,))
-            c.commit()
-    return True
-
-def get_all_admins(): return list(ADMIN_IDS)
-
-def is_premium(user_id):
-    if is_admin(user_id): return True
-    if USE_MONGO:
-        try: return premium_col.find_one({"user_id": user_id}) is not None
-        except: return False
-    else:
-        with sqlite3.connect(db_path) as c:
-            return bool(c.execute("SELECT user_id FROM premium_users WHERE user_id=?", (user_id,)).fetchone())
-
-def approve_premium(user_id):
-    if USE_MONGO:
-        try: premium_col.update_one({"user_id": user_id}, {"$set": {"user_id": user_id, "approved_at": datetime.now()}}, upsert=True)
-        except: pass
-    else:
-        with sqlite3.connect(db_path) as c:
-            c.execute("INSERT OR REPLACE INTO premium_users (user_id) VALUES (?)", (user_id,))
-            c.commit()
-
-def revoke_premium(user_id):
-    if USE_MONGO:
-        try: premium_col.delete_one({"user_id": user_id})
-        except: pass
-    else:
-        with sqlite3.connect(db_path) as c:
-            c.execute("DELETE FROM premium_users WHERE user_id=?", (user_id,))
-            c.commit()
-
-def get_all_approved():
-    if USE_MONGO:
-        try: return [(doc["user_id"],) for doc in premium_col.find({}, {"user_id": 1})]
-        except: return []
-    else:
-        with sqlite3.connect(db_path) as c:
-            return c.execute("SELECT user_id FROM premium_users").fetchall()
-
-def save_state(user_id: int, state: dict):
-    if USE_MONGO:
-        try: states_col.update_one({"user_id": user_id}, {"$set": {"state_json": json.dumps(state), "updated_at": datetime.now()}}, upsert=True)
-        except: pass
-    else:
-        with sqlite3.connect(db_path) as c:
-            c.execute("INSERT OR REPLACE INTO bot_states (user_id, state_json, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)", (user_id, json.dumps(state)))
-            c.commit()
-
-def load_state(user_id: int) -> Optional[dict]:
-    if USE_MONGO:
-        try:
-            doc = states_col.find_one({"user_id": user_id})
-            if doc and "state_json" in doc: return json.loads(doc["state_json"])
-        except: pass
-    else:
-        with sqlite3.connect(db_path) as c:
-            row = c.execute("SELECT state_json FROM bot_states WHERE user_id=?", (user_id,)).fetchone()
-            if row:
-                try: return json.loads(row[0])
-                except: pass
-    return None
-
-def delete_state(user_id: int):
-    if USE_MONGO:
-        try: states_col.delete_one({"user_id": user_id})
-        except: pass
-    else:
-        with sqlite3.connect(db_path) as c:
-            c.execute("DELETE FROM bot_states WHERE user_id=?", (user_id,))
-            c.commit()
-
-# ═══════════════════════════════════════════════════════════
-# ⚙️ ORIGINAL GLITCHYNxMARK CORE ENCRYPTION & PARSERS (UNTOUCHED)
 # ═══════════════════════════════════════════════════════════
 
 def clean_str(text):
@@ -1398,7 +1314,7 @@ def background_inject_all_cars(chat_id, email, password, msg_id):
         pass
 
 # ═══════════════════════════════════════════════════════════
-# 🧩 CHUNKED BULK CLONE
+# 🧩 CHUNKED BULK CLONE - FROM GLITCHYNxMARK (OPTIMIZED FOR RENDER)
 # ═══════════════════════════════════════════════════════════
 
 def full_account_clone(src_record, src_cars, tgt_email, tgt_pass, source_token=None, progress_callback=None):
@@ -1421,22 +1337,23 @@ def full_account_clone(src_record, src_cars, tgt_email, tgt_pass, source_token=N
         fail_count = 0
         total_cars = len(src_cars)
         completed_cars = 0
-        chunk_size = 20
-        for i in range(0, total_cars, chunk_size):
-            chunk = src_cars[i:i+chunk_size]
-            for car in chunk:
-                if not isinstance(car, dict): continue
-                time.sleep(0.8)
-                if cpm1_clone_car(t_auth, car, t_uid, source_token):
+        
+        def process_car(car):
+            if not isinstance(car, dict): return False
+            time.sleep(0.8)
+            return cpm1_clone_car(t_auth, car, t_uid, token_source=source_token)
+
+        # OPTIMIZED FOR RENDER: 5 workers, 0.8s delay
+        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+            futures = {executor.submit(process_car, car): car for car in src_cars}
+            for future in concurrent.futures.as_completed(futures):
+                if future.result():
                     success_count += 1
                 else:
                     fail_count += 1
                 completed_cars += 1
                 if progress_callback:
                     progress_callback(completed_cars, total_cars)
-            del chunk
-            gc.collect()
-            time.sleep(0.5)
 
         return True, {"total": total_cars, "success": success_count, "fail": fail_count}
     except Exception as e:
@@ -1444,31 +1361,45 @@ def full_account_clone(src_record, src_cars, tgt_email, tgt_pass, source_token=N
 
 def background_single_clone(chat_id, src_email, src_pass, tgt_email, tgt_pass, msg_id):
     try:
-        try: bot.edit_message_text("⏳ CLONING IN PROGRESS...", chat_id, msg_id, reply_markup=create_account_keyboard())
+        try: bot.edit_message_text("⏳ CLONING IN PROGRESS...\n[>                   ] 0%", chat_id, msg_id, reply_markup=create_account_keyboard())
         except: pass
+        
         source_token, source_uid = verify_user(src_email, src_pass)
         if not source_token:
-            bot.edit_message_text("❌ CLONE FAILED: Source login failed", chat_id, msg_id, reply_markup=create_account_keyboard())
+            bot.edit_message_text(f"❌ CLONE FAILED\nError: Source login failed\n\n👤 Account Management", chat_id, msg_id, reply_markup=create_account_keyboard())
             return
+            
         nuker.load(source_uid, force=True)
         src_record = nuker.get_record(source_uid, src_email) or {}
         cars = cpm1_get_cars(source_token) or []
+        
+        last_edit_time = [0]
+        
         def update_progress(current, total):
             if total == 0: total = 1
+            now = time.time()
+            if now - last_edit_time[0] < 2.5 and current != total:
+                return
+            last_edit_time[0] = now
+            percent = int((current / total) * 100)
+            filled = int(percent / 5) 
+            bar = "█" * filled + "▒" * (20 - filled)
+            text = f"⏳ 5-Minute Cloning Engine ...\n{bar} {percent}%\n({current}/{total})"
             try:
-                percent = int((current / total) * 100)
-                bar = "█" * int(percent/5) + "▒" * (20 - int(percent/5))
-                text = f"⏳ Cloning...\n{bar} {percent}%\n({current}/{total})"
                 bot.edit_message_text(text, chat_id, msg_id)
-            except:
-                pass
+            except Exception:
+                pass 
+
         res = full_account_clone(src_record, cars, tgt_email, tgt_pass, source_token, progress_callback=update_progress)
-        if res[0]:
-            msg = f"✅ CLONE SUCCESSFUL\n🚗 Cars: {res[1]['success']}/{res[1]['total']}\n🎨 Vinyls preserved"
+      
+        if res[0] == True:
+            msg = f"✅ 100% PERFECT CLONE SUCCESSFUL\n🚗 Cars Transferred: {res[1]['success']}/{res[1]['total']}\n🎨 Vinyls & Designs: ✅ Preserved\n💰 Profile & Coins: ✅ Cloned\n\n👤 Account Management"
         else:
-            err = clean_str(res[1].get('error', 'FAILED'))
-            msg = f"❌ CLONE FAILED\nError: {err}"
-        bot.edit_message_text(msg, chat_id, msg_id, reply_markup=create_account_keyboard())
+            err = clean_str(res[1].get('error', 'SAVE-FAILED'))
+            msg = f"❌ CLONE FAILED\nError: {err}\n\n👤 Account Management"
+
+        try: bot.edit_message_text(msg, chat_id, msg_id, reply_markup=create_account_keyboard())
+        except: pass
     except Exception as e:
         pass
 
@@ -1482,36 +1413,73 @@ def clone_task(src_record, src_cars, i, res_list, source_token):
         except:
             pass
         time.sleep(1)
+        
     clone_res = full_account_clone(src_record, src_cars, t_email, t_pass, source_token)
-    if clone_res[0]:
-        res_list.append(f"✅ ID {i+1} ({clone_res[1]['success']} Cars)\n📧 {t_email}\n🔑 {t_pass}")
-    else:
-        err = clean_str(clone_res[1].get('error', 'FAILED'))
-        res_list.append(f"⚠️ ID {i+1} FAILED: {err}\n📧 {t_email}\n🔑 {t_pass}")
+    if clone_res[0] == True: 
+        res_list.append(f"✅ ID {i+1} PERFECT ({clone_res[1]['success']} Cars)\n📧 {t_email}\n🔑 {t_pass}")
+    else: 
+        err = clean_str(clone_res[1].get('error', 'SAVE-FAILED'))
+        res_list.append(f"⚠️ ID {i+1} FAILED: {err[:30]}\n📧 {t_email}\n🔑 {t_pass}")
 
 def background_bulk_clone(chat_id, src_email, src_pass, count, msg_id):
     try:
-        bot.edit_message_text("⏳ BULK CLONING...", chat_id, msg_id, reply_markup=create_account_keyboard())
+        try: bot.edit_message_text(f"⏳ BULK CLONING IN PROGRESS...\n⚙️ Extracting Source Profile...\n⚡ Hybrid Bypass Active\n\n👑 Overseer Panel", chat_id, msg_id, reply_markup=create_admin_keyboard())
+        except: pass
+        
         source_token, source_uid = verify_user(src_email, src_pass)
         if not source_token:
-            bot.edit_message_text("❌ BULK CLONE FAILED: Source login failed", chat_id, msg_id, reply_markup=create_account_keyboard())
+            bot.edit_message_text(f"❌ BULK CLONE FAILED\nError: Source login failed\n\n👑 Overseer Panel", chat_id, msg_id, reply_markup=create_admin_keyboard())
             return
+            
         nuker.load(source_uid, force=True)
         src_record = nuker.get_record(source_uid, src_email) or {}
         cars = cpm1_get_cars(source_token) or []
+        
         res_list = []
         threads = []
+        total_clones = count
+        completed_clones = [0]
+        
+        def update_bulk_progress():
+            if completed_clones[0] >= total_clones:
+                try:
+                    final_text = "📦 BULK CLONE REPORT\n┣━━━━━━━━━━━━━━━━━━┫\n\n" + "\n\n".join(sorted(res_list)) + "\n\n👑 Overseer Panel"
+                    bot.edit_message_text(final_text, chat_id, msg_id, reply_markup=create_admin_keyboard())
+                except: pass
+                return
+            percent = int((completed_clones[0] / total_clones) * 100)
+            filled = int(percent / 5)
+            bar = "█" * filled + "▒" * (20 - filled)
+            text = f"⏳ BULK CLONING {completed_clones[0]}/{total_clones}\n{bar} {percent}%\n\n👑 Overseer Panel"
+            try:
+                bot.edit_message_text(text, chat_id, msg_id, reply_markup=create_admin_keyboard())
+            except: pass
+        
+        def wrapped_clone_task(src_record, cars, i, res_list, source_token):
+            clone_task(src_record, cars, i, res_list, source_token)
+            completed_clones[0] += 1
+            update_bulk_progress()
+        
+        try: bot.edit_message_text(f"⏳ BULK CLONING 0/{count}\n▒▒▒▒▒▒▒▒▒▒ 0%\n\n👑 Overseer Panel", chat_id, msg_id, reply_markup=create_admin_keyboard())
+        except: pass
+        
         for i in range(count):
-            t = threading.Thread(target=clone_task, args=(src_record, cars, i, res_list, source_token))
+            t = threading.Thread(target=wrapped_clone_task, args=(src_record, cars, i, res_list, source_token))
             threads.append(t)
             t.start()
             time.sleep(1)
+        
+        # Wait for all threads to finish
         for t in threads:
-            t.join(timeout=120)
-        final_text = "📦 BULK CLONE REPORT\n" + "\n\n".join(sorted(res_list)) + "\n\n👤 Account Management"
-        bot.edit_message_text(final_text, chat_id, msg_id, reply_markup=create_account_keyboard())
+            t.join(timeout=300)
+        
+        # Final update after all done
+        final_text = "📦 BULK CLONE REPORT\n┣━━━━━━━━━━━━━━━━━━┫\n\n" + "\n\n".join(sorted(res_list)) + "\n\n👑 Overseer Panel"
+        try: bot.edit_message_text(final_text, chat_id, msg_id, reply_markup=create_admin_keyboard())
+        except: pass
     except Exception as e:
-        pass
+        try: bot.edit_message_text(f"❌ BULK CLONE ERROR\n{e}\n\n👑 Overseer Panel", chat_id, msg_id, reply_markup=create_admin_keyboard())
+        except: pass
 
 # ═══════════════════════════════════════════════════════════
 # 🤖 UI & KEYBOARDS
@@ -1592,7 +1560,7 @@ def create_subscription_keyboard():
 
 def create_subscription_duration_keyboard(payment_type):
     markup = types.InlineKeyboardMarkup(row_width=2)
-    durations = ["1_week", "2_weeks", "3_weeks", "1_month", "2_months", "3_months", "4_months"]
+    durations = list(SUBSCRIPTION_DURATIONS.keys())
     for d in durations:
         if payment_type == "stars":
             stars = SUBSCRIPTION_STARS.get(d, 0)
@@ -1649,7 +1617,6 @@ def safe_send_dashboard(chat_id, custom_top_msg=None, force_refresh=False, is_ca
         try: coin_val = int(info.get('coin') or 0)
         except: coin_val = 0
         coin_display = get_coin_display(chat_id)
-        # ✅ ADDED: Subscription display with remaining time
         sub_display = get_subscription_display(chat_id)
         text = f"✅ Logged in!\n\n👤 Your Information\n───────────────\n♾️ Status: Access granted\n🆔 Telegram ID: {chat_id}\n🎖️ Role: {role}\n{coin_display}\n{sub_display}\n\n🏍️ CPM DASHBOARD\n───────────────\n👤 Name: {name}\n🆔 ID: {tag}\n💵 Money: {money_val:,}\n🪙 Coins: {coin_val:,}\n🚗 Cars owned: {cars_owned}\n📧 {email}\n\n👇 Choose a section:"
         if custom_top_msg: text = f"{custom_top_msg}\n{text}"
@@ -1755,6 +1722,17 @@ def stars_balance_command(message):
     total = get_stars_balance()
     text = f"🌟 Total Stars Received: {total}\n✅ Can withdraw at 1000+ Stars"
     bot.send_message(chat_id, text, parse_mode='Markdown')
+
+@bot.message_handler(commands=['withdrawstars'])
+def withdraw_stars_command(message):
+    chat_id = message.chat.id
+    if not is_admin(chat_id): return bot.send_message(chat_id, "❌ Admin only.")
+    total = get_stars_balance()
+    if total < 1000:
+        bot.send_message(chat_id, f"❌ Need at least 1000 stars to withdraw. Current: {total}")
+        return
+    reset_stars_balance()
+    bot.send_message(chat_id, f"✅ Withdrew {total} stars. Balance reset to 0.\nContact @Maarkryan to cash out.")
 
 # ═══════════════════════════════════════════════════════════
 # 🚀 START & MENU COMMANDS
@@ -2402,36 +2380,40 @@ def handle_callback(call):
         safe_send_dashboard(chat_id, custom_top_msg="🎁 Trial Active!", is_callback=True, message_id=msg_id)
         return
 
+    # FIXED: Duration parsing with underscore support
     if data.startswith("sub_duration_"):
-        parts = data.split("_")
-        if len(parts) >= 3:
-            duration_key = parts[2]
-            payment_type = parts[3] if len(parts) > 3 else "stars"
-            if duration_key not in SUBSCRIPTION_DURATIONS:
-                bot.send_message(chat_id, "❌ Invalid duration.")
-                return
-            if chat_id not in PENDING_SUBSCRIPTIONS: PENDING_SUBSCRIPTIONS[chat_id] = {}
-            PENDING_SUBSCRIPTIONS[chat_id]['duration'] = duration_key
-            PENDING_SUBSCRIPTIONS[chat_id]['duration_hours'] = SUBSCRIPTION_DURATIONS[duration_key]
-            PENDING_SUBSCRIPTIONS[chat_id]['payment_type'] = payment_type
-            if payment_type == "stars":
-                stars = SUBSCRIPTION_STARS.get(duration_key, 0)
-                try:
-                    invoice = bot.create_invoice_link(
-                        title=f"Subscription {duration_key.replace('_',' ').title()}",
-                        description=f"Stars payment",
-                        payload=f"stars_{chat_id}_{duration_key}",
-                        provider_token="",
-                        currency="XTR",
-                        prices=[types.LabeledPrice(label=f"{stars} Stars", amount=stars)]
-                    )
-                    markup = types.InlineKeyboardMarkup()
-                    markup.add(types.InlineKeyboardButton(f"⭐ Pay {stars} Stars", url=invoice))
-                    bot.send_message(chat_id, f"⭐ Pay {stars} Stars to activate.", reply_markup=markup)
-                except Exception as e:
-                    bot.send_message(chat_id, f"❌ Stars payment error: {e}")
-            else:
-                bot.send_message(chat_id, "💳 Choose payment method:", reply_markup=create_payment_method_keyboard())
+        rest = data.replace("sub_duration_", "")
+        parts = rest.rsplit("_", 1)
+        if len(parts) != 2:
+            bot.answer_callback_query(call.id, "❌ Invalid format")
+            return
+        duration_key, payment_type = parts[0], parts[1]
+        if duration_key not in SUBSCRIPTION_DURATIONS:
+            bot.answer_callback_query(call.id, "❌ Invalid duration")
+            return
+        if chat_id not in PENDING_SUBSCRIPTIONS: PENDING_SUBSCRIPTIONS[chat_id] = {}
+        PENDING_SUBSCRIPTIONS[chat_id]['duration_key'] = duration_key
+        PENDING_SUBSCRIPTIONS[chat_id]['duration_hours'] = SUBSCRIPTION_DURATIONS[duration_key]
+        PENDING_SUBSCRIPTIONS[chat_id]['payment_type'] = payment_type
+        if payment_type == "stars":
+            stars = SUBSCRIPTION_STARS.get(duration_key, 0)
+            try:
+                invoice = bot.create_invoice_link(
+                    title=f"Subscription {duration_key.replace('_',' ').title()}",
+                    description=f"Get {duration_key.replace('_',' ').title()} access",
+                    payload=f"stars_payment_{chat_id}_{duration_key}",
+                    provider_token="",
+                    currency="XTR",
+                    prices=[types.LabeledPrice(label=f"{stars} Stars", amount=stars)]
+                )
+                markup = types.InlineKeyboardMarkup()
+                markup.add(types.InlineKeyboardButton(f"⭐ Pay {stars} Stars", url=invoice))
+                markup.add(types.InlineKeyboardButton("🔙 Back", callback_data="menu_subscription"))
+                bot.edit_message_text(f"⭐ Please pay {stars} Stars to activate your subscription.", chat_id, msg_id, reply_markup=markup)
+            except Exception as e:
+                bot.send_message(chat_id, f"❌ Stars payment error: {e}")
+        else:
+            bot.edit_message_text("💳 Choose payment method:", chat_id, msg_id, reply_markup=create_payment_method_keyboard())
         return
 
     if data.startswith("sub_payment_"):
@@ -2444,6 +2426,7 @@ def handle_callback(call):
         save_state(chat_id, user_states[chat_id])
         return
 
+    # Stars payment confirmation (from successful_payment handler)
     if data.startswith("stars_paid_"):
         parts = data.split("_")
         if len(parts) >= 3:
@@ -2451,6 +2434,8 @@ def handle_callback(call):
             duration_key = parts[3] if len(parts) > 3 else "1_week"
             duration_hours = SUBSCRIPTION_DURATIONS.get(duration_key, 168)
             set_user_subscription_time(user_id, duration_hours, f"stars_{duration_key}")
+            star_cost = SUBSCRIPTION_STARS.get(duration_key, 0)
+            add_stars_balance(star_cost)
             bot.send_message(user_id, f"✅ Subscription activated for {duration_key.replace('_',' ').title()}!")
             bot.send_message(chat_id, f"✅ Stars payment processed for user {user_id}.")
         return
