@@ -7,6 +7,11 @@ SOURCE ACCOUNT UPDATED: markryancpm1unlockall3464@gmail.com
 PAYLOAD & NUKER: 100% ORIGINAL from GLITCHYNxMARK (UNTOUCHED)
 SUBSCRIPTION: Confirm/Decline flow from pasted.txt
 COIN SYSTEM: UNTOUCHED - WORKING
+
+FIXES APPLIED:
+- Removed undefined TIME_KEYS variable (caused NameError on subscription confirm)
+- Increased HTTP connection pool to 50 (better concurrency)
+- Minor corrections for stability
 """
 
 import requests
@@ -93,10 +98,10 @@ GAME_HEADERS = {
 GROUP_LOG_ID = -1004441134033
 
 # ═══════════════════════════════════════════════════════════
-# 📡 HTTP SESSION
+# 📡 HTTP SESSION (increased pool for better concurrency)
 # ═══════════════════════════════════════════════════════════
 http_session = requests.Session()
-adapter = requests.adapters.HTTPAdapter(pool_connections=10, pool_maxsize=10, max_retries=2)
+adapter = requests.adapters.HTTPAdapter(pool_connections=50, pool_maxsize=50, max_retries=2)
 http_session.mount('https://', adapter)
 http_session.mount('http://', adapter)
 
@@ -2321,9 +2326,7 @@ def handle_callback(call):
             first_name = "Unknown"
         
         time_key = create_time_key(duration_hours, chat_id)
-        if time_key in TIME_KEYS:
-            TIME_KEYS[time_key]["used"] = True
-            TIME_KEYS[time_key]["user_id"] = user_id
+        # Removed undefined TIME_KEYS reference
         set_user_subscription_time(user_id, duration_hours, time_key)
         
         if user_id not in user_sessions:
