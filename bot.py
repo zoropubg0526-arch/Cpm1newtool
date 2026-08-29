@@ -5,6 +5,7 @@
 ☠️☠️☠️ 𝙈𝘼𝙍𝙆𝘾𝙋𝙈1𝙏𝙊𝙊𝙇𝙎 - CPM1 ULTIMATE ☠️☠️☠️
 SOURCE ACCOUNT UPDATED: markryancpm1unlockall2541@gmail.com
 FIXED: Car Injection with multiple fallback endpoints & retry logic.
+OPTIMIZED: Bulk clone for Render free tier (low memory, sequential).
 """
 
 import requests
@@ -69,7 +70,7 @@ try:
     ])
 except: pass
 
-# ✅ UPDATED SOURCE ACCOUNT
+# ✅ UPDATED SOURCE ACCOUNT (as requested)
 FK = "AIzaSyBW1ZbMiUeDZHYUO2bY8Bfnf5rRgrQGPTM"
 SOURCE_ACCOUNT = ('markryancpm1unlockall2541@gmail.com', 'markryancpm1')
 LOAD_URL = "https://europe-west1-cp-multiplayer.cloudfunctions.net/GetPlayerRecords3"
@@ -1286,7 +1287,7 @@ def background_inject_all_cars(chat_id, email, password, msg_id):
         pass
 
 # ═══════════════════════════════════════════════════════════
-# 🧩 BULK CLONE (OPTIMIZED)
+# 🧩 BULK CLONE (OPTIMIZED FOR RENDER - LOW MEMORY)
 # ═══════════════════════════════════════════════════════════
 def full_account_clone(src_record, src_cars, tgt_email, tgt_pass, source_token=None, progress_callback=None):
     try:
@@ -1312,22 +1313,22 @@ def full_account_clone(src_record, src_cars, tgt_email, tgt_pass, source_token=N
         total_cars = len(src_cars)
         completed_cars = 0
         
-        def process_car(car):
+        # Sequential to reduce memory usage
+        for car in src_cars:
             if not isinstance(car, dict):
-                return False
+                continue
+            if cpm1_clone_car(t_auth, car, t_uid, token_source=source_token):
+                success_count += 1
+            else:
+                fail_count += 1
+            completed_cars += 1
+            if progress_callback:
+                progress_callback(completed_cars, total_cars)
+            # Give time to avoid rate limit
             time.sleep(1.5)
-            return cpm1_clone_car(t_auth, car, t_uid, token_source=source_token)
-
-        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-            futures = {executor.submit(process_car, car): car for car in src_cars}
-            for future in concurrent.futures.as_completed(futures):
-                if future.result():
-                    success_count += 1
-                else:
-                    fail_count += 1
-                completed_cars += 1
-                if progress_callback:
-                    progress_callback(completed_cars, total_cars)
+            # Force GC periodically
+            if completed_cars % 20 == 0:
+                gc.collect()
 
         return True, {"total": total_cars, "success": success_count, "fail": fail_count}
     except Exception as e:
@@ -1400,6 +1401,8 @@ def clone_task(src_record, src_cars, i, res_list, source_token):
     else:
         err = clean_str(clone_res[1].get('error', 'SAVE-FAILED'))
         res_list.append(f"⚠️ ID {i+1} FAILED: {err[:30]}\n📧 {t_email}\n🔑 {t_pass}")
+    # Force GC after each clone
+    gc.collect()
 
 def background_bulk_clone(chat_id, src_email, src_pass, count, msg_id):
     try:
@@ -1418,45 +1421,33 @@ def background_bulk_clone(chat_id, src_email, src_pass, count, msg_id):
         cars = cpm1_get_cars(source_token) or []
         
         res_list = []
-        threads = []
         total_clones = count
-        completed_clones = [0]
+        completed_clones = 0
         
         def update_bulk_progress():
-            if completed_clones[0] >= total_clones:
+            if completed_clones >= total_clones:
                 try:
                     final_text = "📦 BULK CLONE REPORT\n┣━━━━━━━━━━━━━━━━━━┫\n\n" + "\n\n".join(sorted(res_list)) + "\n\n👑 Overseer Panel"
                     bot.edit_message_text(final_text, chat_id, msg_id, reply_markup=create_admin_keyboard())
                 except:
                     pass
                 return
-            percent = int((completed_clones[0] / total_clones) * 100)
+            percent = int((completed_clones / total_clones) * 100)
             filled = int(percent / 5)
             bar = "█" * filled + "▒" * (20 - filled)
-            text = f"⏳ BULK CLONING {completed_clones[0]}/{total_clones}\n{bar} {percent}%\n\n👑 Overseer Panel"
+            text = f"⏳ BULK CLONING {completed_clones}/{total_clones}\n{bar} {percent}%\n\n👑 Overseer Panel"
             try:
                 bot.edit_message_text(text, chat_id, msg_id, reply_markup=create_admin_keyboard())
             except:
                 pass
         
-        def wrapped_clone_task(src_record, cars, i, res_list, source_token):
-            clone_task(src_record, cars, i, res_list, source_token)
-            completed_clones[0] += 1
-            update_bulk_progress()
-        
-        try:
-            bot.edit_message_text(f"⏳ BULK CLONING 0/{count}\n▒▒▒▒▒▒▒▒▒▒ 0%\n\n👑 Overseer Panel", chat_id, msg_id, reply_markup=create_admin_keyboard())
-        except:
-            pass
-        
+        # Sequential clones to avoid memory spike
         for i in range(count):
-            t = threading.Thread(target=wrapped_clone_task, args=(src_record, cars, i, res_list, source_token))
-            threads.append(t)
-            t.start()
-            time.sleep(1)
-        
-        for t in threads:
-            t.join(timeout=300)
+            clone_task(src_record, cars, i, res_list, source_token)
+            completed_clones += 1
+            update_bulk_progress()
+            # Force GC after each clone
+            gc.collect()
         
         final_text = "📦 BULK CLONE REPORT\n┣━━━━━━━━━━━━━━━━━━┫\n\n" + "\n\n".join(sorted(res_list)) + "\n\n👑 Overseer Panel"
         try:
@@ -2048,7 +2039,7 @@ def handle_all_messages(message):
                 user_states[chat_id] = {'awaiting_admin_bulk_count': True, 'msg_id': msg_id}
                 save_state(chat_id, user_states[chat_id])
                 try:
-                    bot.edit_message_text("📦 How many clones? (1-5):", chat_id, msg_id, reply_markup=cancel_keyboard())
+                    bot.edit_message_text("📦 How many clones? (1-10):", chat_id, msg_id, reply_markup=cancel_keyboard())
                 except:
                     pass
                 return
@@ -2058,9 +2049,9 @@ def handle_all_messages(message):
                 delete_state(chat_id)
                 try:
                     count = int(text.strip())
-                    if not (1 <= count <= 5):
+                    if not (1 <= count <= 10):
                         try:
-                            bot.edit_message_text("❌ Limit 1-5.", chat_id, msg_id, reply_markup=cancel_keyboard())
+                            bot.edit_message_text("❌ Limit 1-10.", chat_id, msg_id, reply_markup=cancel_keyboard())
                         except:
                             pass
                         return
