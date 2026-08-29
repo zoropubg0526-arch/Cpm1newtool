@@ -3,8 +3,9 @@
 
 """
 ☠️☠️☠️ 𝙈𝘼𝙍𝙆𝘾𝙋𝙈1𝙏𝙊𝙊𝙇𝙎 - CPM1 ULTIMATE ☠️☠️☠️
-FIXED: Subscription confirm/decline (exact flow from MARKMWEHEHETOOL)
-FIXED: Payment details (PayPal email, PayMaya name)
+FIXED: Subscription confirm/decline (exact flow from pasted.txt)
+FIXED: Payment details (PayMaya number & name)
+FIXED: Car injection (original source account restored)
 UNTOUCHED: All payload formats, encryption, and core functions (100% original)
 """
 
@@ -70,6 +71,7 @@ try:
     ])
 except: pass
 
+# ✅ ORIGINAL SOURCE ACCOUNT – WAG PALITAN!
 FK = "AIzaSyBW1ZbMiUeDZHYUO2bY8Bfnf5rRgrQGPTM"
 SOURCE_ACCOUNT = ('30kunlockallcars6868@gmail.com', '321321')
 LOAD_URL = "https://europe-west1-cp-multiplayer.cloudfunctions.net/GetPlayerRecords3"
@@ -99,7 +101,7 @@ http_session.mount('https://', adapter)
 http_session.mount('http://', adapter)
 
 # ═══════════════════════════════════════════════════════════
-# 🛡️ DATABASE
+# 🛡️ DATABASE (SQLite only)
 # ═══════════════════════════════════════════════════════════
 ADMIN_IDS = set()
 TRACKED_USERS_CACHE = set()
@@ -990,7 +992,7 @@ class SyncCPMNuker:
 nuker = SyncCPMNuker()
 
 # ═══════════════════════════════════════════════════════════
-# 🚗 CAR INJECTION ENGINE (ORIGINAL)
+# 🚗 CAR INJECTION ENGINE (100% ORIGINAL)
 # ═══════════════════════════════════════════════════════════
 _source_cars_cache = None
 _source_cars_cache_time = 0
@@ -1004,7 +1006,8 @@ def verify_user(email, password):
             d = response.json()
             return d.get("idToken"), d.get("localId")
         return None, None
-    except: return None, None
+    except:
+        return None, None
 
 def cpm1_api(token, endpoint, data=None):
     headers = deepcopy(GAME_HEADERS)
@@ -1012,15 +1015,18 @@ def cpm1_api(token, endpoint, data=None):
     try:
         response = http_session.post(f"https://europe-west1-cp-multiplayer.cloudfunctions.net/{endpoint}", json={"data": data}, headers=headers, timeout=10)
         return response.status_code, response.text
-    except: return 500, json.dumps({"result": "error"})
+    except:
+        return 500, json.dumps({"result": "error"})
 
 def get_source_cars():
+    """Fetch source cars from SOURCE_ACCOUNT, cached for 60 seconds."""
     global _source_cars_cache, _source_cars_cache_time
     with _source_cars_lock:
         if _source_cars_cache and time.time() - _source_cars_cache_time < 60:
             return _source_cars_cache
     stok, _ = verify_user(*SOURCE_ACCOUNT)
-    if not stok: return []
+    if not stok:
+        return []
     cars = cpm1_get_cars(stok)
     with _source_cars_lock:
         if cars:
@@ -1030,11 +1036,13 @@ def get_source_cars():
 
 def cpm1_get_cars(token):
     status, text = cpm1_api(token, "GetAllCars2", None)
-    if status != 200: return None
+    if status != 200:
+        return None
     try:
         result = json.loads(json.loads(text)["result"])
         return result if isinstance(result, list) else None
-    except: return None
+    except:
+        return None
 
 def cpm1_get_full_car(token, car_data):
     cid = car_data.get("CarID") or car_data.get("carID") or 0
@@ -1047,20 +1055,25 @@ def cpm1_get_full_car(token, car_data):
     ):
         try:
             status, text = cpm1_api(token, endpoint, data)
-            if status != 200: continue
+            if status != 200:
+                continue
             raw = json.loads(text)
             result = raw.get("result", raw)
             if isinstance(result, str):
-                try: result = json.loads(result)
-                except: pass
+                try:
+                    result = json.loads(result)
+                except:
+                    pass
             if isinstance(result, dict) and (result.get("CarID") or result.get("carID")):
                 return result
             if isinstance(result, list) and result:
                 for item in result:
-                    if not isinstance(item, dict): continue
+                    if not isinstance(item, dict):
+                        continue
                     if item.get("CarID") == cid or item.get("carID") == cid:
                         return item
-        except: continue
+        except:
+            continue
     return None
 
 def cpm1_get_garage_slot(token):
@@ -1071,7 +1084,8 @@ def cpm1_get_garage_slot(token):
                 if status == 200:
                     data = json.loads(text)
                     result = data.get('result')
-                    if isinstance(result, str): result = json.loads(result)
+                    if isinstance(result, str):
+                        result = json.loads(result)
                     if result and isinstance(result, list) and len(result) > 0:
                         for slot in result:
                             if slot.get('carID', 0) == 0 and 'carGeneratedID' in slot:
@@ -1079,15 +1093,18 @@ def cpm1_get_garage_slot(token):
                         for slot in result:
                             if 'carGeneratedID' in slot:
                                 return slot
-            except: pass
+            except:
+                pass
             time.sleep(0.5)
     return None
 
 def cpm1_fix_car_appearance(car):
-    if not isinstance(car, dict): return car
+    if not isinstance(car, dict):
+        return car
     car = json.loads(json.dumps(car))
     vyn = car.get("Vynils")
-    if not isinstance(vyn, dict): vyn = {}
+    if not isinstance(vyn, dict):
+        vyn = {}
     if "CarID" not in vyn and car.get("CarID") is not None:
         vyn["CarID"] = car.get("CarID")
     car["Vynils"] = vyn
@@ -1099,8 +1116,10 @@ def cpm1_fix_car_appearance(car):
         else:
             fixed = []
             for x in val:
-                try: fx = float(x)
-                except Exception: fx = default
+                try:
+                    fx = float(x)
+                except Exception:
+                    fx = default
                 fixed.append(fx)
             car[key] = fixed
 
@@ -1109,7 +1128,8 @@ def cpm1_fix_car_appearance(car):
             ensure_color_list(key, ln, 0.85)
     car["police"] = False
     car["isLocked"] = False
-    if car.get("engineID") in (None, 0): car["engineID"] = 5
+    if car.get("engineID") in (None, 0):
+        car["engineID"] = 5
     car["cdi"] = True
     car["torque"] = car.get("torque") or 3000.0
     car["brake"] = car.get("brake") or 3000.0
@@ -1120,8 +1140,10 @@ def cpm1_clone_car(token_target, car_data, target_uid, token_source=None):
     cid = car_data.get("CarID", 0) or car_data.get("carID", 0)
     full = None
     if token_source:
-        try: full = cpm1_get_full_car(token_source, car_data)
-        except: full = None
+        try:
+            full = cpm1_get_full_car(token_source, car_data)
+        except:
+            full = None
     base = full if isinstance(full, dict) else car_data
     car = cpm1_fix_car_appearance(base)
     car["CarID"] = cid
@@ -1130,7 +1152,8 @@ def cpm1_clone_car(token_target, car_data, target_uid, token_source=None):
             car["texts"][2] = f"{str(target_uid)[:8].upper()}_{cid}_HZ"
         elif "texts" in car and isinstance(car["texts"], str):
             car["texts"] = ["", "", f"{str(target_uid)[:8].upper()}_{cid}_HZ"]
-    except: pass
+    except:
+        pass
     if isinstance(car.get("Vynils"), dict):
         car["Vynils"]["CarID"] = cid
         vynil = car["Vynils"]
@@ -1144,13 +1167,16 @@ def cpm1_clone_car(token_target, car_data, target_uid, token_source=None):
             if status == 200:
                 try:
                     result = json.loads(text).get("result")
-                    if isinstance(result, str): result = json.loads(result)
+                    if isinstance(result, str):
+                        result = json.loads(result)
                     if isinstance(result, dict) and result.get("carGeneratedID"):
                         slot = result
                         break
-                except: pass
+                except:
+                    pass
             time.sleep(0.5)
-        if not slot: return False
+        if not slot:
+            return False
 
     payload = {
         "ownerID": slot.get("ownerID", ""),
@@ -1176,7 +1202,8 @@ def cpm1_clone_car(token_target, car_data, target_uid, token_source=None):
         try:
             if status == 200 and str(json.loads(text).get("result")) in ("1", 1, "true", "True"):
                 return True
-        except: pass
+        except:
+            pass
         time.sleep(0.8)
     return False
 
@@ -1185,20 +1212,26 @@ def cpm1_inject_car(token_target, uid_target, car_data, token_source):
 
 def background_inject_all_cars(chat_id, email, password, msg_id):
     try:
-        try: bot.edit_message_text("⏳ INJECTING CARS...\nProgress: 0/270", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
-        except: pass
+        try:
+            bot.edit_message_text("⏳ INJECTING CARS...\nProgress: 0/270", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
+        except:
+            pass
         web_uid = get_web_uid(chat_id)
         ok, msg_auth, tok = nuker.get_auth(web_uid)
         td = nuker.get_token_data(web_uid)
         uid = td.get("firebase_uid") if td else None
         if not ok or not tok or not uid:
-            try: bot.edit_message_text("❌ Auth Failed. Login again.", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
-            except: pass
+            try:
+                bot.edit_message_text("❌ Auth Failed. Login again.", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
+            except:
+                pass
             return
         source_cars = get_source_cars()
         if not source_cars or len(source_cars) == 0:
-            try: bot.edit_message_text("❌ SERVER ERROR: Could not fetch base cars.", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
-            except: pass
+            try:
+                bot.edit_message_text("❌ SERVER ERROR: Could not fetch base cars.", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
+            except:
+                pass
             return
         success = 0
         fail = 0
@@ -1216,11 +1249,15 @@ def background_inject_all_cars(chat_id, email, password, msg_id):
                 fail += 1
             total_done = success + fail
             if total_done % 10 == 0 or total_done == 270:
-                try: bot.edit_message_text(f"⏳ INJECTING CARS...\nProgress: {total_done}/270\n✅ Success: {success}\n❌ Failed: {fail}", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
-                except: pass
+                try:
+                    bot.edit_message_text(f"⏳ INJECTING CARS...\nProgress: {total_done}/270\n✅ Success: {success}\n❌ Failed: {fail}", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
+                except:
+                    pass
             time.sleep(1.0)
-        try: bot.edit_message_text(f"✅ CAR INJECTION COMPLETE\nTotal: 270\n✅ Success: {success}\n❌ Failed: {fail}", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
-        except: pass
+        try:
+            bot.edit_message_text(f"✅ CAR INJECTION COMPLETE\nTotal: 270\n✅ Success: {success}\n❌ Failed: {fail}", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
+        except:
+            pass
     except Exception as e:
         pass
 
@@ -1230,18 +1267,21 @@ def background_inject_all_cars(chat_id, email, password, msg_id):
 def full_account_clone(src_record, src_cars, tgt_email, tgt_pass, source_token=None, progress_callback=None):
     try:
         t_res = nuker.login(tgt_email, tgt_pass)
-        if not t_res.get("ok"): return False, {"error": "Target login failed"}
+        if not t_res.get("ok"):
+            return False, {"error": "Target login failed"}
         t_auth, t_uid = t_res["auth"], t_res["firebase_uid"]
         nuker.load(t_uid, force=True)
         t_record = nuker.get_record(t_uid, tgt_email) or {}
         safe_keys = ['money','coin','floats','integers','animations','wheels','personEquipmentsMale','personEquipmentsFemale','boughtFsos','emojiPacks']
         for k in safe_keys:
-            if k in src_record: t_record[k] = deepcopy(src_record[k])
+            if k in src_record:
+                t_record[k] = deepcopy(src_record[k])
         t_record['boughtPoliceSirens'] = []
         t_record['boughtPoliceLights'] = []
         safe_keys.extend(['boughtPoliceSirens','boughtPoliceLights'])
         ok, msg = nuker._send(t_auth, t_record, t_uid, original=None, force_fields=set(safe_keys))
-        if not ok: nuker._modify(t_uid, {"money": src_record.get('money', 0), "coin": src_record.get('coin', 0)})
+        if not ok:
+            nuker._modify(t_uid, {"money": src_record.get('money', 0), "coin": src_record.get('coin', 0)})
 
         success_count = 0
         fail_count = 0
@@ -1249,7 +1289,8 @@ def full_account_clone(src_record, src_cars, tgt_email, tgt_pass, source_token=N
         completed_cars = 0
         
         def process_car(car):
-            if not isinstance(car, dict): return False
+            if not isinstance(car, dict):
+                return False
             time.sleep(1.5)
             return cpm1_clone_car(t_auth, car, t_uid, token_source=source_token)
 
@@ -1270,8 +1311,10 @@ def full_account_clone(src_record, src_cars, tgt_email, tgt_pass, source_token=N
 
 def background_single_clone(chat_id, src_email, src_pass, tgt_email, tgt_pass, msg_id):
     try:
-        try: bot.edit_message_text("⏳ CLONING IN PROGRESS...\n[>                   ] 0%", chat_id, msg_id, reply_markup=create_account_keyboard())
-        except: pass
+        try:
+            bot.edit_message_text("⏳ CLONING IN PROGRESS...\n[>                   ] 0%", chat_id, msg_id, reply_markup=create_account_keyboard())
+        except:
+            pass
         
         source_token, source_uid = verify_user(src_email, src_pass)
         if not source_token:
@@ -1285,7 +1328,8 @@ def background_single_clone(chat_id, src_email, src_pass, tgt_email, tgt_pass, m
         last_edit_time = [0]
         
         def update_progress(current, total):
-            if total == 0: total = 1
+            if total == 0:
+                total = 1
             now = time.time()
             if now - last_edit_time[0] < 2.5 and current != total:
                 return
@@ -1307,8 +1351,10 @@ def background_single_clone(chat_id, src_email, src_pass, tgt_email, tgt_pass, m
             err = clean_str(res[1].get('error', 'SAVE-FAILED'))
             msg = f"❌ CLONE FAILED\nError: {err}\n\n👤 Account Management"
 
-        try: bot.edit_message_text(msg, chat_id, msg_id, reply_markup=create_account_keyboard())
-        except: pass
+        try:
+            bot.edit_message_text(msg, chat_id, msg_id, reply_markup=create_account_keyboard())
+        except:
+            pass
     except Exception as e:
         pass
 
@@ -1318,21 +1364,25 @@ def clone_task(src_record, src_cars, i, res_list, source_token):
     for attempt in range(3):
         try:
             r = http_session.post(f"https://identitytoolkit.googleapis.com/v1/accounts:signUp?key={FK}", json={"email": t_email, "password": t_pass, "returnSecureToken": True}, timeout=15)
-            if "idToken" in r.text: break
-        except: pass
+            if "idToken" in r.text:
+                break
+        except:
+            pass
         time.sleep(1)
         
     clone_res = full_account_clone(src_record, src_cars, t_email, t_pass, source_token)
-    if clone_res[0] == True: 
+    if clone_res[0] == True:
         res_list.append(f"✅ ID {i+1} ({clone_res[1]['success']} Cars)\n📧 {t_email}\n🔑 {t_pass}")
-    else: 
+    else:
         err = clean_str(clone_res[1].get('error', 'SAVE-FAILED'))
         res_list.append(f"⚠️ ID {i+1} FAILED: {err[:30]}\n📧 {t_email}\n🔑 {t_pass}")
 
 def background_bulk_clone(chat_id, src_email, src_pass, count, msg_id):
     try:
-        try: bot.edit_message_text(f"⏳ BULK CLONING...\n⚙️ Loading source...\n\n👑 Overseer Panel", chat_id, msg_id, reply_markup=create_admin_keyboard())
-        except: pass
+        try:
+            bot.edit_message_text(f"⏳ BULK CLONING...\n⚙️ Loading source...\n\n👑 Overseer Panel", chat_id, msg_id, reply_markup=create_admin_keyboard())
+        except:
+            pass
         
         source_token, source_uid = verify_user(src_email, src_pass)
         if not source_token:
@@ -1353,7 +1403,8 @@ def background_bulk_clone(chat_id, src_email, src_pass, count, msg_id):
                 try:
                     final_text = "📦 BULK CLONE REPORT\n┣━━━━━━━━━━━━━━━━━━┫\n\n" + "\n\n".join(sorted(res_list)) + "\n\n👑 Overseer Panel"
                     bot.edit_message_text(final_text, chat_id, msg_id, reply_markup=create_admin_keyboard())
-                except: pass
+                except:
+                    pass
                 return
             percent = int((completed_clones[0] / total_clones) * 100)
             filled = int(percent / 5)
@@ -1361,15 +1412,18 @@ def background_bulk_clone(chat_id, src_email, src_pass, count, msg_id):
             text = f"⏳ BULK CLONING {completed_clones[0]}/{total_clones}\n{bar} {percent}%\n\n👑 Overseer Panel"
             try:
                 bot.edit_message_text(text, chat_id, msg_id, reply_markup=create_admin_keyboard())
-            except: pass
+            except:
+                pass
         
         def wrapped_clone_task(src_record, cars, i, res_list, source_token):
             clone_task(src_record, cars, i, res_list, source_token)
             completed_clones[0] += 1
             update_bulk_progress()
         
-        try: bot.edit_message_text(f"⏳ BULK CLONING 0/{count}\n▒▒▒▒▒▒▒▒▒▒ 0%\n\n👑 Overseer Panel", chat_id, msg_id, reply_markup=create_admin_keyboard())
-        except: pass
+        try:
+            bot.edit_message_text(f"⏳ BULK CLONING 0/{count}\n▒▒▒▒▒▒▒▒▒▒ 0%\n\n👑 Overseer Panel", chat_id, msg_id, reply_markup=create_admin_keyboard())
+        except:
+            pass
         
         for i in range(count):
             t = threading.Thread(target=wrapped_clone_task, args=(src_record, cars, i, res_list, source_token))
@@ -1381,18 +1435,24 @@ def background_bulk_clone(chat_id, src_email, src_pass, count, msg_id):
             t.join(timeout=300)
         
         final_text = "📦 BULK CLONE REPORT\n┣━━━━━━━━━━━━━━━━━━┫\n\n" + "\n\n".join(sorted(res_list)) + "\n\n👑 Overseer Panel"
-        try: bot.edit_message_text(final_text, chat_id, msg_id, reply_markup=create_admin_keyboard())
-        except: pass
+        try:
+            bot.edit_message_text(final_text, chat_id, msg_id, reply_markup=create_admin_keyboard())
+        except:
+            pass
     except Exception as e:
-        try: bot.edit_message_text(f"❌ BULK CLONE ERROR\n{e}\n\n👑 Overseer Panel", chat_id, msg_id, reply_markup=create_admin_keyboard())
-        except: pass
+        try:
+            bot.edit_message_text(f"❌ BULK CLONE ERROR\n{e}\n\n👑 Overseer Panel", chat_id, msg_id, reply_markup=create_admin_keyboard())
+        except:
+            pass
 
 # ═══════════════════════════════════════════════════════════
 # 🤖 UI & KEYBOARDS
 # ═══════════════════════════════════════════════════════════
 def get_role_badge(chat_id):
-    if is_admin(chat_id): return "👑 Admin"
-    if is_premium(chat_id): return "💎 Premium User"
+    if is_admin(chat_id):
+        return "👑 Admin"
+    if is_premium(chat_id):
+        return "💎 Premium User"
     return "🆓 Free User"
 
 def cancel_keyboard():
@@ -1405,7 +1465,8 @@ def create_dashboard_keyboard(chat_id):
     markup.row(types.InlineKeyboardButton("👤 Account", callback_data="menu_account"), types.InlineKeyboardButton("💰 Economy", callback_data="menu_economy"))
     markup.row(types.InlineKeyboardButton("🚗 Vehicles", callback_data="menu_vehicles"), types.InlineKeyboardButton("🔓 Unlocks", callback_data="menu_unlocks"))
     markup.row(types.InlineKeyboardButton("💎 Subscription", callback_data="menu_subscription"))
-    if is_admin(chat_id): markup.row(types.InlineKeyboardButton("👑 OVERSEER PANEL", callback_data="admin_panel"))
+    if is_admin(chat_id):
+        markup.row(types.InlineKeyboardButton("👑 OVERSEER PANEL", callback_data="admin_panel"))
     markup.row(types.InlineKeyboardButton("🔄 Refresh", callback_data="refresh_account"), types.InlineKeyboardButton("🚪 Logout", callback_data="logout"))
     return markup
 
@@ -1485,18 +1546,16 @@ def create_payment_method_keyboard():
     markup.row(types.InlineKeyboardButton("🔙 Back", callback_data="menu_subscription"))
     return markup
 
+# ✅ EXACT CONFIRM KEYBOARD – same as pasted.txt
 def create_subscription_confirm_keyboard(user_id, duration_key, payment_method):
-    # Uses the format: sub_confirm_{user_id}_{duration_key}_{payment_method}
-    # This matches exactly the MARKMWEHEHETOOL format
     markup = types.InlineKeyboardMarkup(row_width=2)
     btn1 = types.InlineKeyboardButton("✅ Confirm", callback_data=f"sub_confirm_{user_id}_{duration_key}_{payment_method}")
     btn2 = types.InlineKeyboardButton("❌ Decline", callback_data=f"sub_decline_{user_id}_{duration_key}_{payment_method}")
     markup.row(btn1, btn2)
     return markup
 
+# ✅ EXACT PARSER – from pasted.txt
 def _parse_sub_callback(rest):
-    # This function parses the rest part of the callback data
-    # rest format: {user_id}_{duration_key}_{payment_method}
     try:
         user_id = int(rest.split("_", 1)[0])
         remainder = rest.split("_", 1)[1]
@@ -1520,8 +1579,10 @@ def safe_send_dashboard(chat_id, custom_top_msg=None, force_refresh=False, is_ca
             markup = types.InlineKeyboardMarkup()
             markup.add(types.InlineKeyboardButton("🔓 Login to CPM1", callback_data="init_login"))
             if is_callback and message_id:
-                try: bot.edit_message_text(msg, chat_id, message_id, reply_markup=markup)
-                except: bot.send_message(chat_id, msg, reply_markup=markup)
+                try:
+                    bot.edit_message_text(msg, chat_id, message_id, reply_markup=markup)
+                except:
+                    bot.send_message(chat_id, msg, reply_markup=markup)
             else:
                 bot.send_message(chat_id, msg, reply_markup=markup)
             return
@@ -1533,8 +1594,10 @@ def safe_send_dashboard(chat_id, custom_top_msg=None, force_refresh=False, is_ca
             markup = types.InlineKeyboardMarkup()
             markup.add(types.InlineKeyboardButton("🔓 Login", callback_data="init_login"))
             if is_callback and message_id:
-                try: bot.edit_message_text(msg, chat_id, message_id, reply_markup=markup)
-                except: bot.send_message(chat_id, msg, reply_markup=markup)
+                try:
+                    bot.edit_message_text(msg, chat_id, message_id, reply_markup=markup)
+                except:
+                    bot.send_message(chat_id, msg, reply_markup=markup)
             else:
                 bot.send_message(chat_id, msg, reply_markup=markup)
             return
@@ -1543,18 +1606,25 @@ def safe_send_dashboard(chat_id, custom_top_msg=None, force_refresh=False, is_ca
         tag = clean_str(info.get('localID', 'Unknown'))
         email = clean_str(info.get('email', 'Unknown'))
         cars_owned = info.get('cars', 0)
-        try: money_val = int(info.get('money') or 0)
-        except: money_val = 0
-        try: coin_val = int(info.get('coin') or 0)
-        except: coin_val = 0
+        try:
+            money_val = int(info.get('money') or 0)
+        except:
+            money_val = 0
+        try:
+            coin_val = int(info.get('coin') or 0)
+        except:
+            coin_val = 0
         coin_display = get_coin_display(chat_id)
         sub_display = get_subscription_display(chat_id)
         text = f"✅ Logged in!\n\n👤 Your Information\n───────────────\n♾️ Status: Access granted\n🆔 Telegram ID: {chat_id}\n🎖️ Role: {role}\n{coin_display}\n{sub_display}\n\n🏍️ CPM DASHBOARD\n───────────────\n👤 Name: {name}\n🆔 ID: {tag}\n💵 Money: {money_val:,}\n🪙 Coins: {coin_val:,}\n🚗 Cars owned: {cars_owned}\n📧 {email}\n\n👇 Choose a section:"
-        if custom_top_msg: text = f"{custom_top_msg}\n{text}"
+        if custom_top_msg:
+            text = f"{custom_top_msg}\n{text}"
         markup = create_dashboard_keyboard(chat_id)
         if is_callback and message_id:
-            try: bot.edit_message_text(text, chat_id, message_id, reply_markup=markup)
-            except: bot.send_message(chat_id, text, reply_markup=markup)
+            try:
+                bot.edit_message_text(text, chat_id, message_id, reply_markup=markup)
+            except:
+                bot.send_message(chat_id, text, reply_markup=markup)
         else:
             bot.send_message(chat_id, text, reply_markup=markup)
     except Exception as e:
@@ -1566,7 +1636,8 @@ def safe_send_dashboard(chat_id, custom_top_msg=None, force_refresh=False, is_ca
 @bot.message_handler(commands=['addcoins'])
 def addcoins_command(message):
     chat_id = message.chat.id
-    if not is_admin(chat_id): return bot.send_message(chat_id, "❌ Admin only.")
+    if not is_admin(chat_id):
+        return bot.send_message(chat_id, "❌ Admin only.")
     args = message.text.split()
     if len(args) != 3:
         bot.send_message(chat_id, "Usage: /addcoins <user_id> <amount>")
@@ -1582,7 +1653,8 @@ def addcoins_command(message):
 @bot.message_handler(commands=['setcoins'])
 def setcoins_command(message):
     chat_id = message.chat.id
-    if not is_admin(chat_id): return bot.send_message(chat_id, "❌ Admin only.")
+    if not is_admin(chat_id):
+        return bot.send_message(chat_id, "❌ Admin only.")
     args = message.text.split()
     if len(args) != 3:
         bot.send_message(chat_id, "Usage: /setcoins <user_id> <amount>")
@@ -1598,7 +1670,8 @@ def setcoins_command(message):
 @bot.message_handler(commands=['unlimited'])
 def unlimited_command(message):
     chat_id = message.chat.id
-    if not is_admin(chat_id): return bot.send_message(chat_id, "❌ Admin only.")
+    if not is_admin(chat_id):
+        return bot.send_message(chat_id, "❌ Admin only.")
     args = message.text.split()
     if len(args) != 3:
         bot.send_message(chat_id, "Usage: /unlimited <user_id> <True/False>")
@@ -1614,7 +1687,8 @@ def unlimited_command(message):
 @bot.message_handler(commands=['balance'])
 def balance_command(message):
     chat_id = message.chat.id
-    if not is_admin(chat_id): return bot.send_message(chat_id, "❌ Admin only.")
+    if not is_admin(chat_id):
+        return bot.send_message(chat_id, "❌ Admin only.")
     args = message.text.split()
     try:
         target_id = int(args[1]) if len(args) > 1 else chat_id
@@ -1627,7 +1701,8 @@ def balance_command(message):
 @bot.message_handler(commands=['subscribe'])
 def subscribe_command(message):
     chat_id = message.chat.id
-    if not is_admin(chat_id): return bot.send_message(chat_id, "❌ Admin only.")
+    if not is_admin(chat_id):
+        return bot.send_message(chat_id, "❌ Admin only.")
     args = message.text.split()
     if len(args) != 3:
         bot.send_message(chat_id, "Usage: /subscribe <user_id> <months>")
@@ -1648,7 +1723,8 @@ def subscribe_command(message):
 @bot.message_handler(commands=['stars'])
 def stars_balance_command(message):
     chat_id = message.chat.id
-    if not is_admin(chat_id): return bot.send_message(chat_id, "❌ Admin only.")
+    if not is_admin(chat_id):
+        return bot.send_message(chat_id, "❌ Admin only.")
     total = get_stars_balance()
     text = f"🌟 Total Stars Received: {total}\n✅ Can withdraw at 1000+ Stars"
     bot.send_message(chat_id, text, parse_mode='Markdown')
@@ -1656,7 +1732,8 @@ def stars_balance_command(message):
 @bot.message_handler(commands=['withdrawstars'])
 def withdraw_stars_command(message):
     chat_id = message.chat.id
-    if not is_admin(chat_id): return bot.send_message(chat_id, "❌ Admin only.")
+    if not is_admin(chat_id):
+        return bot.send_message(chat_id, "❌ Admin only.")
     total = get_stars_balance()
     if total < 1000:
         bot.send_message(chat_id, f"❌ Need at least 1000 stars to withdraw. Current: {total}")
@@ -1670,19 +1747,25 @@ def withdraw_stars_command(message):
 user_sessions = {}
 user_states = {}
 
-def get_web_uid(telegram_id): return int(str(telegram_id)[:12])
+def get_web_uid(telegram_id):
+    return int(str(telegram_id)[:12])
 
 @bot.message_handler(commands=['start', 'menu'])
 def start(message):
     try:
         chat_id = message.chat.id
-        try: bot.delete_message(chat_id, message.message_id)
-        except: pass
-        if chat_id in user_states: del user_states[chat_id]
+        try:
+            bot.delete_message(chat_id, message.message_id)
+        except:
+            pass
+        if chat_id in user_states:
+            del user_states[chat_id]
         delete_state(chat_id)
         track_user(chat_id)
-        if chat_id not in user_sessions: user_sessions[chat_id] = {'cpm_logged_in': False}
-        elif 'cpm_logged_in' not in user_sessions[chat_id]: user_sessions[chat_id]['cpm_logged_in'] = False
+        if chat_id not in user_sessions:
+            user_sessions[chat_id] = {'cpm_logged_in': False}
+        elif 'cpm_logged_in' not in user_sessions[chat_id]:
+            user_sessions[chat_id]['cpm_logged_in'] = False
         bot.send_message(chat_id, "⚡ 𝙈𝘼𝙍𝙆𝘾𝙋𝙈1𝙏𝙊𝙊𝙇𝙎 TERMINAL ⚡", reply_markup=types.ReplyKeyboardRemove())
         safe_send_dashboard(chat_id, force_refresh=False, is_callback=False)
     except:
@@ -1692,24 +1775,28 @@ def start(message):
 def admin_command(message):
     try:
         chat_id = message.chat.id
-        try: bot.delete_message(chat_id, message.message_id)
-        except: pass
-        if chat_id in user_states: del user_states[chat_id]
+        try:
+            bot.delete_message(chat_id, message.message_id)
+        except:
+            pass
+        if chat_id in user_states:
+            del user_states[chat_id]
         delete_state(chat_id)
-        if not is_admin(chat_id): return bot.send_message(chat_id, "❌ UNAUTHORIZED.")
+        if not is_admin(chat_id):
+            return bot.send_message(chat_id, "❌ UNAUTHORIZED.")
         bot.send_message(chat_id, "👑 OVERSEER TERMINAL", reply_markup=create_admin_keyboard())
     except:
         pass
 
 # ═══════════════════════════════════════════════════════════
-# 🎯 MESSAGE ROUTER - FIXED PHOTO HANDLER (MATCHES MARKMWEHEHETOOL)
+# 🎯 MESSAGE ROUTER (PHOTO HANDLER)
 # ═══════════════════════════════════════════════════════════
 @bot.message_handler(func=lambda message: True, content_types=['text', 'photo', 'document'])
 def handle_all_messages(message):
     try:
         chat_id = message.chat.id
 
-        # Handle subscription photo exactly like MARKMWEHEHETOOL
+        # Handle subscription photo (exact flow from pasted.txt)
         if chat_id in user_states and user_states[chat_id].get('awaiting_subscription_photo'):
             state = user_states[chat_id]
             payment_method = state.get('payment_method', 'Unknown')
@@ -1805,134 +1892,182 @@ def handle_all_messages(message):
                 bot.send_message(chat_id, "❌ Please send a photo (screenshot) of your payment.")
                 return
 
-        # Normal text handling (unchanged from original)
+        # Normal text handling (original)
         text = message.text
-        try: bot.delete_message(chat_id, message.message_id)
-        except: pass
+        try:
+            bot.delete_message(chat_id, message.message_id)
+        except:
+            pass
         track_user(chat_id)
-        if not text or text.startswith('/'): return
+        if not text or text.startswith('/'):
+            return
 
         if chat_id not in user_states:
             saved = load_state(chat_id)
-            if saved: user_states[chat_id] = saved
+            if saved:
+                user_states[chat_id] = saved
 
         if chat_id in user_states:
             state = user_states[chat_id]
             if state.get('awaiting_add_admin'):
-                del user_states[chat_id]; delete_state(chat_id)
+                del user_states[chat_id]
+                delete_state(chat_id)
                 msg_id = state.get('msg_id')
-                if not is_admin(chat_id): return
+                if not is_admin(chat_id):
+                    return
                 try:
                     target_id = int(text.strip())
                     add_admin(target_id)
-                    try: bot.delete_message(chat_id, msg_id)
-                    except: pass
+                    try:
+                        bot.delete_message(chat_id, msg_id)
+                    except:
+                        pass
                     bot.send_message(chat_id, f"✅ Admin rights granted to ID: {target_id}")
                 except:
-                    try: bot.edit_message_text("❌ Invalid ID.", chat_id, msg_id, reply_markup=cancel_keyboard())
-                    except: pass
+                    try:
+                        bot.edit_message_text("❌ Invalid ID.", chat_id, msg_id, reply_markup=cancel_keyboard())
+                    except:
+                        pass
                 return
             if state.get('awaiting_rem_admin'):
-                del user_states[chat_id]; delete_state(chat_id)
+                del user_states[chat_id]
+                delete_state(chat_id)
                 msg_id = state.get('msg_id')
-                if not is_admin(chat_id): return
+                if not is_admin(chat_id):
+                    return
                 try:
                     target_id = int(text.strip())
                     remove_admin(target_id)
-                    try: bot.delete_message(chat_id, msg_id)
-                    except: pass
+                    try:
+                        bot.delete_message(chat_id, msg_id)
+                    except:
+                        pass
                     bot.send_message(chat_id, f"❌ Admin rights revoked from ID: {target_id}")
                 except:
-                    try: bot.edit_message_text("❌ Invalid ID.", chat_id, msg_id, reply_markup=cancel_keyboard())
-                    except: pass
+                    try:
+                        bot.edit_message_text("❌ Invalid ID.", chat_id, msg_id, reply_markup=cancel_keyboard())
+                    except:
+                        pass
                 return
             if state.get('awaiting_add_prem'):
-                del user_states[chat_id]; delete_state(chat_id)
+                del user_states[chat_id]
+                delete_state(chat_id)
                 msg_id = state.get('msg_id')
-                if not is_admin(chat_id): return
+                if not is_admin(chat_id):
+                    return
                 try:
                     approve_premium(int(text.strip()))
-                    try: bot.delete_message(chat_id, msg_id)
-                    except: pass
+                    try:
+                        bot.delete_message(chat_id, msg_id)
+                    except:
+                        pass
                     bot.send_message(chat_id, f"✅ Premium granted to: {text.strip()}")
                 except:
-                    try: bot.edit_message_text("❌ Invalid ID.", chat_id, msg_id, reply_markup=cancel_keyboard())
-                    except: pass
+                    try:
+                        bot.edit_message_text("❌ Invalid ID.", chat_id, msg_id, reply_markup=cancel_keyboard())
+                    except:
+                        pass
                 return
             if state.get('awaiting_revoke'):
-                del user_states[chat_id]; delete_state(chat_id)
+                del user_states[chat_id]
+                delete_state(chat_id)
                 msg_id = state.get('msg_id')
-                if not is_admin(chat_id): return
+                if not is_admin(chat_id):
+                    return
                 try:
                     revoke_premium(int(text.strip()))
-                    try: bot.delete_message(chat_id, msg_id)
-                    except: pass
+                    try:
+                        bot.delete_message(chat_id, msg_id)
+                    except:
+                        pass
                     bot.send_message(chat_id, f"❌ Premium revoked from: {text.strip()}")
                 except:
-                    try: bot.edit_message_text("❌ Invalid ID.", chat_id, msg_id, reply_markup=cancel_keyboard())
-                    except: pass
+                    try:
+                        bot.edit_message_text("❌ Invalid ID.", chat_id, msg_id, reply_markup=cancel_keyboard())
+                    except:
+                        pass
                 return
             if state.get('awaiting_broadcast'):
-                del user_states[chat_id]; delete_state(chat_id)
+                del user_states[chat_id]
+                delete_state(chat_id)
                 msg_id = state.get('msg_id')
-                if not is_admin(chat_id): return
+                if not is_admin(chat_id):
+                    return
                 c = 0
                 users = get_all_tracked_users()
                 for uid in users:
-                    try: bot.send_message(uid, f"📢 ANNOUNCEMENT\n┣━━━━━━━━━━━━━━━━━━┫\n{text}"); c += 1
-                    except: pass
+                    try:
+                        bot.send_message(uid, f"📢 ANNOUNCEMENT\n┣━━━━━━━━━━━━━━━━━━┫\n{text}")
+                        c += 1
+                    except:
+                        pass
                 try:
                     bot.delete_message(chat_id, msg_id)
                     bot.send_message(chat_id, f"✅ Delivered to {c} users.")
-                except: pass
+                except:
+                    pass
                 return
             if state.get('awaiting_admin_bulk_source_email'):
                 user_sessions[chat_id]['bulk_source_email'] = text.strip()
                 msg_id = state.get('msg_id')
                 user_states[chat_id] = {'awaiting_admin_bulk_source_pass': True, 'msg_id': msg_id}
                 save_state(chat_id, user_states[chat_id])
-                try: bot.edit_message_text("🔑 Send the SOURCE account password:", chat_id, msg_id, reply_markup=cancel_keyboard())
-                except: pass
+                try:
+                    bot.edit_message_text("🔑 Send the SOURCE account password:", chat_id, msg_id, reply_markup=cancel_keyboard())
+                except:
+                    pass
                 return
             if state.get('awaiting_admin_bulk_source_pass'):
                 user_sessions[chat_id]['bulk_source_pass'] = text.strip()
                 msg_id = state.get('msg_id')
                 user_states[chat_id] = {'awaiting_admin_bulk_count': True, 'msg_id': msg_id}
                 save_state(chat_id, user_states[chat_id])
-                try: bot.edit_message_text("📦 How many clones? (1-5):", chat_id, msg_id, reply_markup=cancel_keyboard())
-                except: pass
+                try:
+                    bot.edit_message_text("📦 How many clones? (1-5):", chat_id, msg_id, reply_markup=cancel_keyboard())
+                except:
+                    pass
                 return
             if state.get('awaiting_admin_bulk_count'):
                 msg_id = state.get('msg_id')
-                del user_states[chat_id]; delete_state(chat_id)
+                del user_states[chat_id]
+                delete_state(chat_id)
                 try:
                     count = int(text.strip())
                     if not (1 <= count <= 5):
-                        try: bot.edit_message_text("❌ Limit 1-5.", chat_id, msg_id, reply_markup=cancel_keyboard())
-                        except: pass
+                        try:
+                            bot.edit_message_text("❌ Limit 1-5.", chat_id, msg_id, reply_markup=cancel_keyboard())
+                        except:
+                            pass
                         return
                     src_email = user_sessions[chat_id].get('bulk_source_email')
                     src_pass = user_sessions[chat_id].get('bulk_source_pass')
                     threading.Thread(target=background_bulk_clone, args=(chat_id, src_email, src_pass, count, msg_id)).start()
                 except:
-                    try: bot.edit_message_text("❌ Must be a number.", chat_id, msg_id, reply_markup=cancel_keyboard())
-                    except: pass
+                    try:
+                        bot.edit_message_text("❌ Must be a number.", chat_id, msg_id, reply_markup=cancel_keyboard())
+                    except:
+                        pass
                 return
             if state.get('awaiting_cpm_login_email'):
                 user_sessions[chat_id]['email'] = text.strip()
                 msg_id = state.get('msg_id')
                 user_states[chat_id] = {'awaiting_cpm_login_pass': True, 'msg_id': msg_id}
                 save_state(chat_id, user_states[chat_id])
-                try: bot.edit_message_text("🔑 Send the password:", chat_id, msg_id, reply_markup=cancel_keyboard())
-                except: pass
+                try:
+                    bot.edit_message_text("🔑 Send the password:", chat_id, msg_id, reply_markup=cancel_keyboard())
+                except:
+                    pass
                 return
             if state.get('awaiting_cpm_login_pass'):
                 password = text.strip()
                 email = user_sessions[chat_id].get('email', '')
                 msg_id = state.get('msg_id')
-                del user_states[chat_id]; delete_state(chat_id)
-                try: bot.edit_message_text("⏳ Authenticating...", chat_id, msg_id)
-                except: pass
+                del user_states[chat_id]
+                delete_state(chat_id)
+                try:
+                    bot.edit_message_text("⏳ Authenticating...", chat_id, msg_id)
+                except:
+                    pass
                 try:
                     web_uid = get_web_uid(chat_id)
                     res = nuker.login(email, password)
@@ -1942,148 +2077,199 @@ def handle_all_messages(message):
                         safe_send_dashboard(chat_id, force_refresh=True, is_callback=True, message_id=msg_id)
                     else:
                         err = clean_str(res.get('message', 'Unknown Error') if isinstance(res, dict) else 'Network Failure')
-                        try: bot.edit_message_text(f"❌ AUTH FAILED: {err}", chat_id, msg_id, reply_markup=cancel_keyboard())
-                        except: pass
+                        try:
+                            bot.edit_message_text(f"❌ AUTH FAILED: {err}", chat_id, msg_id, reply_markup=cancel_keyboard())
+                        except:
+                            pass
                 except:
-                    try: bot.edit_message_text("❌ API Timeout.", chat_id, msg_id, reply_markup=cancel_keyboard())
-                    except: pass
+                    try:
+                        bot.edit_message_text("❌ API Timeout.", chat_id, msg_id, reply_markup=cancel_keyboard())
+                    except:
+                        pass
                 return
             if state.get('awaiting_clone_source_email'):
                 user_sessions[chat_id]['clone_src_email'] = text.strip()
                 msg_id = state.get('msg_id')
                 user_states[chat_id] = {'awaiting_clone_source_pass': True, 'msg_id': msg_id}
                 save_state(chat_id, user_states[chat_id])
-                try: bot.edit_message_text("🔑 Send SOURCE password:", chat_id, msg_id, reply_markup=cancel_keyboard())
-                except: pass
+                try:
+                    bot.edit_message_text("🔑 Send SOURCE password:", chat_id, msg_id, reply_markup=cancel_keyboard())
+                except:
+                    pass
                 return
             if state.get('awaiting_clone_source_pass'):
                 user_sessions[chat_id]['clone_src_pass'] = text.strip()
                 msg_id = state.get('msg_id')
                 user_states[chat_id] = {'awaiting_clone_target_email': True, 'msg_id': msg_id}
                 save_state(chat_id, user_states[chat_id])
-                try: bot.edit_message_text("📧 Send TARGET email:", chat_id, msg_id, reply_markup=cancel_keyboard())
-                except: pass
+                try:
+                    bot.edit_message_text("📧 Send TARGET email:", chat_id, msg_id, reply_markup=cancel_keyboard())
+                except:
+                    pass
                 return
             if state.get('awaiting_clone_target_email'):
                 user_sessions[chat_id]['clone_tgt_email'] = text.strip()
                 msg_id = state.get('msg_id')
                 user_states[chat_id] = {'awaiting_clone_target_pass': True, 'msg_id': msg_id}
                 save_state(chat_id, user_states[chat_id])
-                try: bot.edit_message_text("🔑 Send TARGET password:", chat_id, msg_id, reply_markup=cancel_keyboard())
-                except: pass
+                try:
+                    bot.edit_message_text("🔑 Send TARGET password:", chat_id, msg_id, reply_markup=cancel_keyboard())
+                except:
+                    pass
                 return
             if state.get('awaiting_clone_target_pass'):
                 msg_id = state.get('msg_id')
-                del user_states[chat_id]; delete_state(chat_id)
+                del user_states[chat_id]
+                delete_state(chat_id)
                 tgt_pass = text.strip()
                 src_email = user_sessions[chat_id].get('clone_src_email')
                 src_pass = user_sessions[chat_id].get('clone_src_pass')
                 tgt_email = user_sessions[chat_id].get('clone_tgt_email')
-                if not check_and_deduct_coins(chat_id, COIN_COSTS['clone'], "Clone Account"): return
+                if not check_and_deduct_coins(chat_id, COIN_COSTS['clone'], "Clone Account"):
+                    return
                 threading.Thread(target=background_single_clone, args=(chat_id, src_email, src_pass, tgt_email, tgt_pass, msg_id)).start()
                 return
             if state.get('awaiting_single_car_id'):
                 msg_id = state.get('msg_id')
-                del user_states[chat_id]; delete_state(chat_id)
+                del user_states[chat_id]
+                delete_state(chat_id)
                 try:
                     car_id = int(text.strip())
                     web_uid = get_web_uid(chat_id)
                     td = nuker.get_token_data(web_uid)
                     em = td.get("email") if td else ""
                     pw = td.get("password") if td else ""
-                    if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], f"Unlock Car {car_id}"): return
-                    try: bot.edit_message_text(f"⏳ Injecting Car ID {car_id}...", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
-                    except: pass
+                    if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], f"Unlock Car {car_id}"):
+                        return
+                    try:
+                        bot.edit_message_text(f"⏳ Injecting Car ID {car_id}...", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
+                    except:
+                        pass
+
                     def run_single_inject():
                         if not em or not pw:
-                            try: bot.edit_message_text("❌ Failed to Auth. Please login again.", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
-                            except: pass
+                            try:
+                                bot.edit_message_text("❌ Failed to Auth. Please login again.", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
+                            except:
+                                pass
                             return
                         ok, _, tok = nuker.get_auth(web_uid)
                         if not ok:
-                            try: bot.edit_message_text("❌ Auth failed.", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
-                            except: pass
+                            try:
+                                bot.edit_message_text("❌ Auth failed.", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
+                            except:
+                                pass
                             return
                         src_cars = get_source_cars()
                         if not src_cars:
-                            try: bot.edit_message_text("❌ Source unavailable.", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
-                            except: pass
+                            try:
+                                bot.edit_message_text("❌ Source unavailable.", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
+                            except:
+                                pass
                             return
                         car_data = next((c for c in src_cars if int(c.get("CarID", 0)) == car_id), None)
-                        if not car_data: car_data = src_cars[0]
+                        if not car_data:
+                            car_data = src_cars[0]
                         if cpm1_inject_car(tok, td.get("firebase_uid"), car_data, None):
-                            try: bot.edit_message_text(f"✅ Car ID {car_id} Unlocked!", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
-                            except: pass
+                            try:
+                                bot.edit_message_text(f"✅ Car ID {car_id} Unlocked!", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
+                            except:
+                                pass
                         else:
-                            try: bot.edit_message_text(f"❌ Failed to unlock ID {car_id}.", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
-                            except: pass
+                            try:
+                                bot.edit_message_text(f"❌ Failed to unlock ID {car_id}.", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
+                            except:
+                                pass
+
                     threading.Thread(target=run_single_inject).start()
                 except:
-                    try: bot.edit_message_text("❌ Invalid ID.", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
-                    except: pass
+                    try:
+                        bot.edit_message_text("❌ Invalid ID.", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
+                    except:
+                        pass
                 return
             if state.get('awaiting_change_name'):
                 msg_id = state.get('msg_id')
-                del user_states[chat_id]; delete_state(chat_id)
-                if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Change Name"): return
+                del user_states[chat_id]
+                delete_state(chat_id)
+                if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Change Name"):
+                    return
                 nuker.change_player_name(user_sessions[chat_id].get('web_uid'), text.strip())
                 safe_send_dashboard(chat_id, custom_top_msg="✅ Name Changed!", force_refresh=True, is_callback=True, message_id=msg_id)
                 return
             if state.get('awaiting_change_id'):
                 msg_id = state.get('msg_id')
-                del user_states[chat_id]; delete_state(chat_id)
-                if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Change ID"): return
+                del user_states[chat_id]
+                delete_state(chat_id)
+                if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Change ID"):
+                    return
                 nuker.change_player_id(user_sessions[chat_id].get('web_uid'), text.strip().upper())
                 safe_send_dashboard(chat_id, custom_top_msg="✅ ID Changed!", force_refresh=True, is_callback=True, message_id=msg_id)
                 return
             if state.get('awaiting_cpm1_email'):
                 msg_id = state.get('msg_id')
-                del user_states[chat_id]; delete_state(chat_id)
-                if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Change Email"): return
+                del user_states[chat_id]
+                delete_state(chat_id)
+                if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Change Email"):
+                    return
                 nuker.change_email(user_sessions[chat_id].get('web_uid'), text.strip())
                 safe_send_dashboard(chat_id, custom_top_msg="✅ Email Changed!", force_refresh=True, is_callback=True, message_id=msg_id)
                 return
             if state.get('awaiting_change_pass'):
                 msg_id = state.get('msg_id')
-                del user_states[chat_id]; delete_state(chat_id)
-                if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Change Password"): return
-                try: bot.delete_message(chat_id, msg_id)
-                except: pass
+                del user_states[chat_id]
+                delete_state(chat_id)
+                if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Change Password"):
+                    return
+                try:
+                    bot.delete_message(chat_id, msg_id)
+                except:
+                    pass
                 safe_send_dashboard(chat_id, custom_top_msg="✅ Password Processed!", force_refresh=True, is_callback=False)
                 return
             if state.get('awaiting_money'):
                 msg_id = state.get('msg_id')
-                del user_states[chat_id]; delete_state(chat_id)
-                if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Add Money"): return
+                del user_states[chat_id]
+                delete_state(chat_id)
+                if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Add Money"):
+                    return
                 try:
                     nuker.set_money(user_sessions[chat_id].get('web_uid'), int(text.strip()))
                     safe_send_dashboard(chat_id, custom_top_msg="✅ Money Added!", force_refresh=True, is_callback=True, message_id=msg_id)
                 except:
-                    try: bot.edit_message_text("❌ Numeric required.", chat_id, msg_id, reply_markup=cancel_keyboard())
-                    except: pass
+                    try:
+                        bot.edit_message_text("❌ Numeric required.", chat_id, msg_id, reply_markup=cancel_keyboard())
+                    except:
+                        pass
                 return
             if state.get('awaiting_coin'):
                 msg_id = state.get('msg_id')
-                del user_states[chat_id]; delete_state(chat_id)
-                if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Add Coins"): return
+                del user_states[chat_id]
+                delete_state(chat_id)
+                if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Add Coins"):
+                    return
                 try:
                     nuker.set_coin(user_sessions[chat_id].get('web_uid'), int(text.strip()))
                     safe_send_dashboard(chat_id, custom_top_msg="✅ Coins Added!", force_refresh=True, is_callback=True, message_id=msg_id)
                 except:
-                    try: bot.edit_message_text("❌ Numeric required.", chat_id, msg_id, reply_markup=cancel_keyboard())
-                    except: pass
+                    try:
+                        bot.edit_message_text("❌ Numeric required.", chat_id, msg_id, reply_markup=cancel_keyboard())
+                    except:
+                        pass
                 return
     except Exception as e:
         pass
 
 # ═══════════════════════════════════════════════════════════
-# 🎯 BUTTON HANDLER - EXACTLY LIKE MARKMWEHEHETOOL
+# 🎯 BUTTON HANDLER (KASAMA ANG CONFIRM/DECLINE)
 # ═══════════════════════════════════════════════════════════
 def premium_required(call):
     chat_id = call.message.chat.id
     if not is_premium(chat_id):
-        try: bot.answer_callback_query(call.id, "❌ Paid Feature. Request Admins.", show_alert=True)
-        except: pass
+        try:
+            bot.answer_callback_query(call.id, "❌ Paid Feature. Request Admins.", show_alert=True)
+        except:
+            pass
         return True
     return False
 
@@ -2093,12 +2279,14 @@ def handle_callback(call):
     msg_id = call.message.message_id
     data = call.data
 
-    if chat_id not in user_sessions: user_sessions[chat_id] = {}
+    if chat_id not in user_sessions:
+        user_sessions[chat_id] = {}
     track_user(chat_id)
 
     if chat_id not in user_states:
         saved = load_state(chat_id)
-        if saved: user_states[chat_id] = saved
+        if saved:
+            user_states[chat_id] = saved
 
     silent_nav_buttons = ["menu_main","init_login","logout","refresh_account",
                           "menu_account","menu_economy","menu_vehicles","menu_unlocks",
@@ -2106,10 +2294,12 @@ def handle_callback(call):
                           "eco_money_cust","eco_coins_cust","veh_unlock_single","veh_unlock_all",
                           "menu_subscription"]
     if data in silent_nav_buttons:
-        try: bot.answer_callback_query(call.id)
-        except: pass
+        try:
+            bot.answer_callback_query(call.id)
+        except:
+            pass
 
-    # ====== SUBSCRIPTION CONFIRM / DECLINE (EXACT MATCH FROM MARKMWEHEHETOOL) ======
+    # ====== SUBSCRIPTION CONFIRM (exact from pasted.txt) ======
     if data.startswith("sub_confirm_"):
         rest = data[len("sub_confirm_"):]
         user_id, duration_key, payment_method = _parse_sub_callback(rest)
@@ -2166,6 +2356,7 @@ def handle_callback(call):
             del PENDING_SUBSCRIPTIONS[user_id]
         return
 
+    # ====== SUBSCRIPTION DECLINE ======
     if data.startswith("sub_decline_"):
         rest = data[len("sub_decline_"):]
         user_id, duration_key, payment_method = _parse_sub_callback(rest)
@@ -2207,22 +2398,26 @@ def handle_callback(call):
             del PENDING_SUBSCRIPTIONS[user_id]
         return
 
-    # ====== REST OF CALLBACK HANDLERS (UNTOUCHED) ======
+    # ====== REST OF CALLBACKS (UNTOUCHED) ======
     if data == "menu_main":
-        if chat_id in user_states: del user_states[chat_id]
+        if chat_id in user_states:
+            del user_states[chat_id]
         delete_state(chat_id)
         return safe_send_dashboard(chat_id, force_refresh=False, is_callback=True, message_id=msg_id)
 
     if data == "init_login":
-        try: bot.delete_message(chat_id, msg_id)
-        except: pass
+        try:
+            bot.delete_message(chat_id, msg_id)
+        except:
+            pass
         msg = bot.send_message(chat_id, "📧 Send email to login:", reply_markup=cancel_keyboard())
         user_states[chat_id] = {'awaiting_cpm_login_email': True, 'msg_id': msg.message_id}
         save_state(chat_id, user_states[chat_id])
         return
 
     if data == "logout":
-        if chat_id in user_sessions: user_sessions[chat_id]['cpm_logged_in'] = False
+        if chat_id in user_sessions:
+            user_sessions[chat_id]['cpm_logged_in'] = False
         nuker.delete_token(get_web_uid(chat_id))
         return safe_send_dashboard(chat_id, force_refresh=False, is_callback=True, message_id=msg_id)
 
@@ -2230,149 +2425,219 @@ def handle_callback(call):
         return safe_send_dashboard(chat_id, custom_top_msg="✅ Refreshed!", force_refresh=True, is_callback=True, message_id=msg_id)
 
     if data == "menu_account":
-        try: bot.edit_message_text("👤 Account Management", chat_id, msg_id, reply_markup=create_account_keyboard())
-        except: pass
+        try:
+            bot.edit_message_text("👤 Account Management", chat_id, msg_id, reply_markup=create_account_keyboard())
+        except:
+            pass
         return
     if data == "menu_economy":
-        try: bot.edit_message_text("💰 Economy Settings", chat_id, msg_id, reply_markup=create_economy_keyboard())
-        except: pass
+        try:
+            bot.edit_message_text("💰 Economy Settings", chat_id, msg_id, reply_markup=create_economy_keyboard())
+        except:
+            pass
         return
     if data == "menu_vehicles":
-        try: bot.edit_message_text("🚗 Vehicles Settings", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
-        except: pass
+        try:
+            bot.edit_message_text("🚗 Vehicles Settings", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
+        except:
+            pass
         return
     if data == "menu_unlocks":
-        try: bot.edit_message_text("🔓 Unlocks Configuration", chat_id, msg_id, reply_markup=create_unlocks_keyboard())
-        except: pass
+        try:
+            bot.edit_message_text("🔓 Unlocks Configuration", chat_id, msg_id, reply_markup=create_unlocks_keyboard())
+        except:
+            pass
         return
     if data == "menu_subscription":
-        try: bot.edit_message_text("💎 Subscription Options", chat_id, msg_id, reply_markup=create_subscription_keyboard())
-        except: pass
+        try:
+            bot.edit_message_text("💎 Subscription Options", chat_id, msg_id, reply_markup=create_subscription_keyboard())
+        except:
+            pass
         return
 
     if data == "acc_info":
         return safe_send_dashboard(chat_id, is_callback=True, message_id=msg_id)
     if data == "acc_name":
-        if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Change Name"): return
-        try: bot.delete_message(chat_id, msg_id)
-        except: pass
+        if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Change Name"):
+            return
+        try:
+            bot.delete_message(chat_id, msg_id)
+        except:
+            pass
         msg = bot.send_message(chat_id, "✏️ Enter new Name:", reply_markup=cancel_keyboard())
         user_states[chat_id] = {'awaiting_change_name': True, 'msg_id': msg.message_id}
         save_state(chat_id, user_states[chat_id])
         return
     if data == "acc_id":
-        if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Change ID"): return
-        try: bot.delete_message(chat_id, msg_id)
-        except: pass
+        if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Change ID"):
+            return
+        try:
+            bot.delete_message(chat_id, msg_id)
+        except:
+            pass
         msg = bot.send_message(chat_id, "🆔 Enter new ID:", reply_markup=cancel_keyboard())
         user_states[chat_id] = {'awaiting_change_id': True, 'msg_id': msg.message_id}
         save_state(chat_id, user_states[chat_id])
         return
     if data == "acc_email":
-        if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Change Email"): return
-        try: bot.delete_message(chat_id, msg_id)
-        except: pass
+        if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Change Email"):
+            return
+        try:
+            bot.delete_message(chat_id, msg_id)
+        except:
+            pass
         msg = bot.send_message(chat_id, "📧 Enter new Email:", reply_markup=cancel_keyboard())
         user_states[chat_id] = {'awaiting_cpm1_email': True, 'msg_id': msg.message_id}
         save_state(chat_id, user_states[chat_id])
         return
     if data == "acc_pass":
-        if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Change Password"): return
-        try: bot.delete_message(chat_id, msg_id)
-        except: pass
+        if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Change Password"):
+            return
+        try:
+            bot.delete_message(chat_id, msg_id)
+        except:
+            pass
         msg = bot.send_message(chat_id, "🔑 Enter new Password:", reply_markup=cancel_keyboard())
         user_states[chat_id] = {'awaiting_change_pass': True, 'msg_id': msg.message_id}
         save_state(chat_id, user_states[chat_id])
         return
     if data == "acc_clone":
-        if premium_required(call): return
-        try: bot.delete_message(chat_id, msg_id)
-        except: pass
+        if premium_required(call):
+            return
+        try:
+            bot.delete_message(chat_id, msg_id)
+        except:
+            pass
         msg = bot.send_message(chat_id, "📋 Send SOURCE account email:", reply_markup=cancel_keyboard())
         user_states[chat_id] = {'awaiting_clone_source_email': True, 'msg_id': msg.message_id}
         save_state(chat_id, user_states[chat_id])
         return
 
     if data == "admin_panel":
-        if not is_admin(chat_id): return
-        try: bot.answer_callback_query(call.id)
-        except: pass
-        try: bot.edit_message_text("👑 OVERSEER TERMINAL", chat_id, msg_id, reply_markup=create_admin_keyboard())
-        except: pass
+        if not is_admin(chat_id):
+            return
+        try:
+            bot.answer_callback_query(call.id)
+        except:
+            pass
+        try:
+            bot.edit_message_text("👑 OVERSEER TERMINAL", chat_id, msg_id, reply_markup=create_admin_keyboard())
+        except:
+            pass
         return
     if data == "admin_add_admin":
-        if not is_admin(chat_id): return
-        try: bot.answer_callback_query(call.id)
-        except: pass
-        try: bot.delete_message(chat_id, msg_id)
-        except: pass
+        if not is_admin(chat_id):
+            return
+        try:
+            bot.answer_callback_query(call.id)
+        except:
+            pass
+        try:
+            bot.delete_message(chat_id, msg_id)
+        except:
+            pass
         msg = bot.send_message(chat_id, "➕ ENTER TARGET ID:", reply_markup=cancel_keyboard())
         user_states[chat_id] = {'awaiting_add_admin': True, 'msg_id': msg.message_id}
         save_state(chat_id, user_states[chat_id])
         return
     if data == "admin_rem_admin":
-        if not is_admin(chat_id): return
-        try: bot.answer_callback_query(call.id)
-        except: pass
-        try: bot.delete_message(chat_id, msg_id)
-        except: pass
+        if not is_admin(chat_id):
+            return
+        try:
+            bot.answer_callback_query(call.id)
+        except:
+            pass
+        try:
+            bot.delete_message(chat_id, msg_id)
+        except:
+            pass
         msg = bot.send_message(chat_id, "➖ ENTER TARGET ID:", reply_markup=cancel_keyboard())
         user_states[chat_id] = {'awaiting_rem_admin': True, 'msg_id': msg.message_id}
         save_state(chat_id, user_states[chat_id])
         return
     if data == "admin_view_admins":
-        if not is_admin(chat_id): return
-        try: bot.answer_callback_query(call.id)
-        except: pass
+        if not is_admin(chat_id):
+            return
+        try:
+            bot.answer_callback_query(call.id)
+        except:
+            pass
         admins = get_all_admins()
         msg_text = "👥 CURRENT ADMINS\n" + "".join([f"🆔 `{uid}`\n" for uid in admins])
-        try: bot.edit_message_text(msg_text, chat_id, msg_id, reply_markup=create_admin_keyboard())
-        except: pass
+        try:
+            bot.edit_message_text(msg_text, chat_id, msg_id, reply_markup=create_admin_keyboard())
+        except:
+            pass
         return
     if data == "admin_add_prem":
-        if not is_admin(chat_id): return
-        try: bot.answer_callback_query(call.id)
-        except: pass
-        try: bot.delete_message(chat_id, msg_id)
-        except: pass
+        if not is_admin(chat_id):
+            return
+        try:
+            bot.answer_callback_query(call.id)
+        except:
+            pass
+        try:
+            bot.delete_message(chat_id, msg_id)
+        except:
+            pass
         msg = bot.send_message(chat_id, "✅ ENTER TARGET ID:", reply_markup=cancel_keyboard())
         user_states[chat_id] = {'awaiting_add_prem': True, 'msg_id': msg.message_id}
         save_state(chat_id, user_states[chat_id])
         return
     if data == "admin_revoke":
-        if not is_admin(chat_id): return
-        try: bot.answer_callback_query(call.id)
-        except: pass
-        try: bot.delete_message(chat_id, msg_id)
-        except: pass
+        if not is_admin(chat_id):
+            return
+        try:
+            bot.answer_callback_query(call.id)
+        except:
+            pass
+        try:
+            bot.delete_message(chat_id, msg_id)
+        except:
+            pass
         msg = bot.send_message(chat_id, "❌ TARGET ID:", reply_markup=cancel_keyboard())
         user_states[chat_id] = {'awaiting_revoke': True, 'msg_id': msg.message_id}
         save_state(chat_id, user_states[chat_id])
         return
     if data == "admin_broadcast":
-        if not is_admin(chat_id): return
-        try: bot.answer_callback_query(call.id)
-        except: pass
-        try: bot.delete_message(chat_id, msg_id)
-        except: pass
+        if not is_admin(chat_id):
+            return
+        try:
+            bot.answer_callback_query(call.id)
+        except:
+            pass
+        try:
+            bot.delete_message(chat_id, msg_id)
+        except:
+            pass
         msg = bot.send_message(chat_id, "📢 ENTER BROADCAST MESSAGE:", reply_markup=cancel_keyboard())
         user_states[chat_id] = {'awaiting_broadcast': True, 'msg_id': msg.message_id}
         save_state(chat_id, user_states[chat_id])
         return
     if data == "admin_stats":
-        if not is_admin(chat_id): return
-        try: bot.answer_callback_query(call.id)
-        except: pass
+        if not is_admin(chat_id):
+            return
+        try:
+            bot.answer_callback_query(call.id)
+        except:
+            pass
         t_users = get_total_users()
-        try: bot.edit_message_text(f"📊 TELEMETRY\n👥 Users: {t_users}\n✅ Premium: {len(get_all_approved())}\n👑 Admins: {len(get_all_admins())}", chat_id, msg_id, reply_markup=create_admin_keyboard())
-        except: pass
+        try:
+            bot.edit_message_text(f"📊 TELEMETRY\n👥 Users: {t_users}\n✅ Premium: {len(get_all_approved())}\n👑 Admins: {len(get_all_admins())}", chat_id, msg_id, reply_markup=create_admin_keyboard())
+        except:
+            pass
         return
     if data == "admin_bulk_clone":
-        if not is_admin(chat_id): return
-        try: bot.answer_callback_query(call.id)
-        except: pass
-        try: bot.delete_message(chat_id, msg_id)
-        except: pass
+        if not is_admin(chat_id):
+            return
+        try:
+            bot.answer_callback_query(call.id)
+        except:
+            pass
+        try:
+            bot.delete_message(chat_id, msg_id)
+        except:
+            pass
         msg = bot.send_message(chat_id, "📦 Send SOURCE account email:", reply_markup=cancel_keyboard())
         user_states[chat_id] = {'awaiting_admin_bulk_source_email': True, 'msg_id': msg.message_id}
         save_state(chat_id, user_states[chat_id])
@@ -2385,57 +2650,79 @@ def handle_callback(call):
             if not check_and_deduct_coins(chat_id, cost, name):
                 return
             if data.startswith("eco_"):
-                menu_text = "💰 Economy Settings"; kb = create_economy_keyboard()
+                menu_text = "💰 Economy Settings"
+                kb = create_economy_keyboard()
             elif data.startswith("veh_") or data == "veh_fix":
-                menu_text = "🚗 Vehicles Settings"; kb = create_vehicles_keyboard()
+                menu_text = "🚗 Vehicles Settings"
+                kb = create_vehicles_keyboard()
             else:
-                menu_text = "🔓 Unlocks Configuration"; kb = create_unlocks_keyboard()
-            try: bot.edit_message_text(f"⏳ Executing...\n\n{menu_text}", chat_id, msg_id, reply_markup=kb)
-            except: pass
-            if args: res = func(web_uid, *args)
-            else: res = func(web_uid)
+                menu_text = "🔓 Unlocks Configuration"
+                kb = create_unlocks_keyboard()
+            try:
+                bot.edit_message_text(f"⏳ Executing...\n\n{menu_text}", chat_id, msg_id, reply_markup=kb)
+            except:
+                pass
+            if args:
+                res = func(web_uid, *args)
+            else:
+                res = func(web_uid)
             if res and isinstance(res, dict) and res.get("ok"):
                 final_text = f"✅ {name}\n\n{menu_text}"
             else:
                 err = clean_str(res.get("message", "API Blocked") if isinstance(res, dict) else "Timeout")
                 final_text = f"❌ Failed: {err}\n\n{menu_text}"
-            try: bot.edit_message_text(final_text, chat_id, msg_id, reply_markup=kb)
-            except: pass
+            try:
+                bot.edit_message_text(final_text, chat_id, msg_id, reply_markup=kb)
+            except:
+                pass
         except Exception as e:
-            try: bot.answer_callback_query(call_obj.id, f"❌ Error.", show_alert=True)
-            except: pass
+            try:
+                bot.answer_callback_query(call_obj.id, f"❌ Error.", show_alert=True)
+            except:
+                pass
 
     if data == "eco_money_max":
-        if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Money 50M"): return
+        if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Money 50M"):
+            return
         return exec_mod(call, "Money -> 50M", nuker.set_money, 50000000, cost=0)
     if data == "eco_coins_max":
-        if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Coins 500K"): return
+        if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Coins 500K"):
+            return
         return exec_mod(call, "Coins -> 500K", nuker.set_coin, 500000, cost=0)
     if data == "eco_king":
-        if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "King Rank"): return
+        if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "King Rank"):
+            return
         return exec_mod(call, "King Rank", nuker.set_rank, cost=0)
     if data == "eco_money_cust":
-        try: bot.delete_message(chat_id, msg_id)
-        except: pass
+        try:
+            bot.delete_message(chat_id, msg_id)
+        except:
+            pass
         msg = bot.send_message(chat_id, "💵 Enter amount:", reply_markup=cancel_keyboard())
         user_states[chat_id] = {'awaiting_money': True, 'msg_id': msg.message_id}
         save_state(chat_id, user_states[chat_id])
         return
     if data == "eco_coins_cust":
-        try: bot.delete_message(chat_id, msg_id)
-        except: pass
+        try:
+            bot.delete_message(chat_id, msg_id)
+        except:
+            pass
         msg = bot.send_message(chat_id, "🪙 Enter amount:", reply_markup=cancel_keyboard())
         user_states[chat_id] = {'awaiting_coin': True, 'msg_id': msg.message_id}
         save_state(chat_id, user_states[chat_id])
         return
 
     if data == "veh_fix":
-        if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Fix Account"): return
+        if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Fix Account"):
+            return
         return exec_mod(call, "Fix Account", nuker.fix_account, cost=0)
     if data == "veh_unlock_all":
-        if not check_and_deduct_coins(chat_id, COIN_COSTS['bulk'], "Unlock All Cars"): return
-        try: bot.edit_message_text("⚠️ MASS INJECTION\nThis will inject 270 cars.\nProceed?", chat_id, msg_id, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton("✅ YES", callback_data="start_car_inject"), types.InlineKeyboardButton("❌ CANCEL", callback_data="menu_vehicles")))
-        except: pass
+        if not check_and_deduct_coins(chat_id, COIN_COSTS['bulk'], "Unlock All Cars"):
+            return
+        try:
+            bot.edit_message_text("⚠️ MASS INJECTION\nThis will inject 270 cars.\nProceed?", chat_id, msg_id, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton("✅ YES", callback_data="start_car_inject"), types.InlineKeyboardButton("❌ CANCEL", callback_data="menu_vehicles")))
+        except:
+            pass
         return
     if data == "start_car_inject":
         td = nuker.get_token_data(get_web_uid(chat_id))
@@ -2444,58 +2731,77 @@ def handle_callback(call):
         threading.Thread(target=background_inject_all_cars, args=(chat_id, em, pw, msg_id)).start()
         return
     if data == "veh_unlock_single":
-        try: bot.delete_message(chat_id, msg_id)
-        except: pass
+        try:
+            bot.delete_message(chat_id, msg_id)
+        except:
+            pass
         msg = bot.send_message(chat_id, "🚙 Enter Car ID (1-270):", reply_markup=cancel_keyboard())
         user_states[chat_id] = {'awaiting_single_car_id': True, 'msg_id': msg.message_id}
         save_state(chat_id, user_states[chat_id])
         return
 
     if data == "unl_w16":
-        if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "W16 Engine"): return
+        if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "W16 Engine"):
+            return
         return exec_mod(call, "W16 Engine", nuker.unlock_w16, cost=0)
     if data == "unl_smoke":
-        if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Smoke"): return
+        if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Smoke"):
+            return
         return exec_mod(call, "Smoke", nuker.unlock_smoke, cost=0)
     if data == "unl_fuel":
-        if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Max Fuel"): return
+        if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Max Fuel"):
+            return
         return exec_mod(call, "Max Fuel", nuker.unlimited_fuel, cost=0)
     if data == "unl_damage":
-        if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "No Damage"): return
+        if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "No Damage"):
+            return
         return exec_mod(call, "No Damage", nuker.disable_damage, cost=0)
     if data == "unl_horns":
-        if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Horns"): return
+        if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Horns"):
+            return
         return exec_mod(call, "Horns", nuker.unlock_horns, cost=0)
     if data == "unl_anim":
-        if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Animations"): return
+        if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Animations"):
+            return
         return exec_mod(call, "Animations", nuker.unlock_animations, cost=0)
     if data == "unl_houses":
-        if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "All Houses"): return
+        if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "All Houses"):
+            return
         return exec_mod(call, "All Houses", nuker.unlock_houses, cost=0)
     if data == "unl_wheels":
-        if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Wheels"): return
+        if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Wheels"):
+            return
         return exec_mod(call, "Wheels", nuker.unlock_wheels, cost=0)
     if data == "unl_levels":
-        if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Complete Levels"): return
+        if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Complete Levels"):
+            return
         return exec_mod(call, "Complete Levels", nuker.complete_all_levels, cost=0)
     if data == "unl_clothes":
-        if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "All Clothes"): return
+        if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "All Clothes"):
+            return
         return exec_mod(call, "All Clothes", nuker.unlock_all_clothes, cost=0)
     if data == "unl_ultimate":
-        if not check_and_deduct_coins(chat_id, COIN_COSTS['bulk'], "Ultimate Unlock"): return
+        if not check_and_deduct_coins(chat_id, COIN_COSTS['bulk'], "Ultimate Unlock"):
+            return
         return exec_mod(call, "Ultimate Glitch", nuker.unlock_all_features, cost=0)
 
     if data == "sub_stars":
-        try: bot.edit_message_text("⭐ Choose duration (Stars):", chat_id, msg_id, reply_markup=create_subscription_duration_keyboard("stars"))
-        except: pass
+        try:
+            bot.edit_message_text("⭐ Choose duration (Stars):", chat_id, msg_id, reply_markup=create_subscription_duration_keyboard("stars"))
+        except:
+            pass
         return
     if data == "sub_money":
-        try: bot.edit_message_text("💳 Choose duration (Money):", chat_id, msg_id, reply_markup=create_subscription_duration_keyboard("money"))
-        except: pass
+        try:
+            bot.edit_message_text("💳 Choose duration (Money):", chat_id, msg_id, reply_markup=create_subscription_duration_keyboard("money"))
+        except:
+            pass
         return
     if data == "sub_time_key":
-        try: bot.delete_message(chat_id, msg_id)
-        except: pass
+        try:
+            bot.delete_message(chat_id, msg_id)
+        except:
+            pass
         msg = bot.send_message(chat_id, "🔑 Enter Time Key:", reply_markup=cancel_keyboard())
         bot.register_next_step_handler(msg, process_time_key_input)
         return
@@ -2517,7 +2823,8 @@ def handle_callback(call):
         if duration_key not in SUBSCRIPTION_DURATIONS:
             bot.answer_callback_query(call.id, "❌ Invalid duration")
             return
-        if chat_id not in PENDING_SUBSCRIPTIONS: PENDING_SUBSCRIPTIONS[chat_id] = {}
+        if chat_id not in PENDING_SUBSCRIPTIONS:
+            PENDING_SUBSCRIPTIONS[chat_id] = {}
         PENDING_SUBSCRIPTIONS[chat_id]['duration_key'] = duration_key
         PENDING_SUBSCRIPTIONS[chat_id]['duration_hours'] = SUBSCRIPTION_DURATIONS[duration_key]
         PENDING_SUBSCRIPTIONS[chat_id]['payment_type'] = payment_type
@@ -2545,7 +2852,8 @@ def handle_callback(call):
     # Payment method selection – save state for screenshot
     if data.startswith("sub_payment_"):
         payment_method = data.replace("sub_payment_", "")
-        if chat_id not in PENDING_SUBSCRIPTIONS: PENDING_SUBSCRIPTIONS[chat_id] = {}
+        if chat_id not in PENDING_SUBSCRIPTIONS:
+            PENDING_SUBSCRIPTIONS[chat_id] = {}
         PENDING_SUBSCRIPTIONS[chat_id]['payment_method'] = payment_method
         text = PAYMENT_METHODS.get(payment_method, {}).get("details", "Payment selected")
         bot.send_message(chat_id, f"💳 {text}\n\n📤 Send screenshot:", reply_markup=cancel_keyboard())
