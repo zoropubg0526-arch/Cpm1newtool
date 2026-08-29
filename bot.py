@@ -3,15 +3,8 @@
 
 """
 ☠️☠️☠️ 𝙈𝘼𝙍𝙆𝘾𝙋𝙈1𝙏𝙊𝙊𝙇𝙎 - CPM1 ULTIMATE ☠️☠️☠️
-SOURCE ACCOUNT UPDATED: markryancpm1unlockall3464@gmail.com
-PAYLOAD & NUKER: 100% ORIGINAL from GLITCHYNxMARK (UNTOUCHED)
-SUBSCRIPTION: Confirm/Decline flow from pasted.txt
-COIN SYSTEM: UNTOUCHED - WORKING
-
-FIXES APPLIED:
-- Removed undefined TIME_KEYS variable (caused NameError on subscription confirm)
-- Increased HTTP connection pool to 50 (better concurrency)
-- Minor corrections for stability
+SOURCE ACCOUNT UPDATED: markryancpm1unlockall2541@gmail.com
+FIXED: Car Injection with multiple fallback endpoints & retry logic.
 """
 
 import requests
@@ -46,7 +39,7 @@ from flask import Flask, jsonify
 app = Flask(__name__)
 @app.route('/')
 def home():
-    return jsonify({"status": "MARKCPM1TOOLS Online", "version": "21.0"})
+    return jsonify({"status": "MARKCPM1TOOLS Online", "version": "21.2"})
 @app.route('/health')
 def health(): return jsonify({"status": "healthy"})
 def run_flask():
@@ -78,7 +71,7 @@ except: pass
 
 # ✅ UPDATED SOURCE ACCOUNT
 FK = "AIzaSyBW1ZbMiUeDZHYUO2bY8Bfnf5rRgrQGPTM"
-SOURCE_ACCOUNT = ('30kunlockallcars9694@gmail.com', '321321')
+SOURCE_ACCOUNT = ('markryancpm1unlockall2541@gmail.com', 'markryancpm1')
 LOAD_URL = "https://europe-west1-cp-multiplayer.cloudfunctions.net/GetPlayerRecords3"
 SAVE_URL = "https://europe-west1-cp-multiplayer.cloudfunctions.net/SavePlayerRecordsPartially8"
 RANK_URL = "https://us-central1-cp-multiplayer.cloudfunctions.net/SetUserRating5"
@@ -98,10 +91,10 @@ GAME_HEADERS = {
 GROUP_LOG_ID = -1004441134033
 
 # ═══════════════════════════════════════════════════════════
-# 📡 HTTP SESSION (increased pool for better concurrency)
+# 📡 HTTP SESSION
 # ═══════════════════════════════════════════════════════════
 http_session = requests.Session()
-adapter = requests.adapters.HTTPAdapter(pool_connections=50, pool_maxsize=50, max_retries=2)
+adapter = requests.adapters.HTTPAdapter(pool_connections=50, pool_maxsize=50, max_retries=3)
 http_session.mount('https://', adapter)
 http_session.mount('http://', adapter)
 
@@ -764,7 +757,7 @@ class SyncCPMNuker:
     def _post(self, url: str, payload: Dict[str, Any], headers: Dict[str, str]) -> Dict[str, Any]:
         try:
             clean_headers = {k: v for k, v in headers.items() if k.lower() != "host"}
-            resp = http_session.post(url, json=payload, headers=clean_headers, timeout=15)
+            resp = http_session.post(url, json=payload, headers=clean_headers, timeout=20)
             try: return resp.json()
             except: return {"raw": resp.text, "status": resp.status_code, "ok": False}
         except Exception as e: return {"ok": False, "message": "CONNECTION FAILED"}
@@ -997,7 +990,7 @@ class SyncCPMNuker:
 nuker = SyncCPMNuker()
 
 # ═══════════════════════════════════════════════════════════
-# 🚗 CAR INJECTION ENGINE (100% ORIGINAL FROM GLITCHYNxMARK)
+# 🚗 CAR INJECTION ENGINE - FIXED WITH FALLBACK & RETRY
 # ═══════════════════════════════════════════════════════════
 _source_cars_cache = None
 _source_cars_cache_time = 0
@@ -1006,21 +999,24 @@ _source_cars_lock = threading.Lock()
 def verify_user(email, password):
     payload = {"email": email, "password": password, "returnSecureToken": True, "clientType": "CLIENT_TYPE_ANDROID"}
     try:
-        response = http_session.post(f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword", json=payload, params={"key": FK}, timeout=15)
+        response = http_session.post(f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword", json=payload, params={"key": FK}, timeout=20)
         if response.status_code == 200:
             d = response.json()
             return d.get("idToken"), d.get("localId")
+        print(f"[SOURCE LOGIN] Status: {response.status_code}, Response: {response.text[:200]}")
         return None, None
-    except:
+    except Exception as e:
+        print(f"[SOURCE LOGIN] Error: {e}")
         return None, None
 
 def cpm1_api(token, endpoint, data=None):
     headers = deepcopy(GAME_HEADERS)
     headers["Authorization"] = f"Bearer {token}"
     try:
-        response = http_session.post(f"https://europe-west1-cp-multiplayer.cloudfunctions.net/{endpoint}", json={"data": data}, headers=headers, timeout=10)
+        response = http_session.post(f"https://europe-west1-cp-multiplayer.cloudfunctions.net/{endpoint}", json={"data": data}, headers=headers, timeout=15)
         return response.status_code, response.text
-    except:
+    except Exception as e:
+        print(f"[API CALL] Error for {endpoint}: {e}")
         return 500, json.dumps({"result": "error"})
 
 def get_source_cars():
@@ -1031,23 +1027,43 @@ def get_source_cars():
             return _source_cars_cache
     stok, _ = verify_user(*SOURCE_ACCOUNT)
     if not stok:
+        print("[SOURCE CARS] Source auth failed.")
         return []
     cars = cpm1_get_cars(stok)
-    with _source_cars_lock:
-        if cars:
+    if cars:
+        with _source_cars_lock:
             _source_cars_cache = cars
             _source_cars_cache_time = time.time()
+    else:
+        print("[SOURCE CARS] Failed to get cars from source.")
     return _source_cars_cache or []
 
 def cpm1_get_cars(token):
-    status, text = cpm1_api(token, "GetAllCars2", None)
-    if status != 200:
-        return None
-    try:
-        result = json.loads(json.loads(text)["result"])
-        return result if isinstance(result, list) else None
-    except:
-        return None
+    # Try multiple endpoints with fallback
+    endpoints = [
+        ("GetAllCars2", None),
+        ("GetAllCars3", None),
+        ("GetAllCars", None),
+    ]
+    for endpoint, data in endpoints:
+        status, text = cpm1_api(token, endpoint, data)
+        if status != 200:
+            continue
+        try:
+            raw = json.loads(text)
+            result = raw.get("result", raw)
+            if isinstance(result, str):
+                result = json.loads(result)
+            if isinstance(result, list) and len(result) > 0:
+                return result
+            if isinstance(result, dict):
+                for key in ["cars", "CarList", "data", "list"]:
+                    if isinstance(result.get(key), list) and len(result[key]) > 0:
+                        return result[key]
+        except Exception as e:
+            print(f"[CARS PARSE] Error parsing {endpoint}: {e}")
+            continue
+    return None
 
 def cpm1_get_full_car(token, car_data):
     cid = car_data.get("CarID") or car_data.get("carID") or 0
@@ -1083,7 +1099,7 @@ def cpm1_get_full_car(token, car_data):
 
 def cpm1_get_garage_slot(token):
     for param in [20, 10, 50, 100]:
-        for attempt in range(2):
+        for attempt in range(3):
             try:
                 status, text = cpm1_api(token, "WSGetCarListV3", param)
                 if status == 200:
@@ -1165,51 +1181,53 @@ def cpm1_clone_car(token_target, car_data, target_uid, token_source=None):
     else:
         vynil = {"CarID": cid}
 
-    slot = cpm1_get_garage_slot(token_target)
-    if not slot:
-        for attempt in range(3):
-            status, text = cpm1_api(token_target, "WSCreateCarSlot", json.dumps({"mode": 1}))
-            if status == 200:
-                try:
-                    result = json.loads(text).get("result")
-                    if isinstance(result, str):
-                        result = json.loads(result)
-                    if isinstance(result, dict) and result.get("carGeneratedID"):
-                        slot = result
-                        break
-                except:
-                    pass
-            time.sleep(0.5)
+    # Try multiple attempts to get slot and purchase
+    for retry in range(3):
+        slot = cpm1_get_garage_slot(token_target)
         if not slot:
-            return False
+            for attempt in range(3):
+                status, text = cpm1_api(token_target, "WSCreateCarSlot", json.dumps({"mode": 1}))
+                if status == 200:
+                    try:
+                        result = json.loads(text).get("result")
+                        if isinstance(result, str):
+                            result = json.loads(result)
+                        if isinstance(result, dict) and result.get("carGeneratedID"):
+                            slot = result
+                            break
+                    except:
+                        pass
+                time.sleep(0.5)
+            if not slot:
+                continue
 
-    payload = {
-        "ownerID": slot.get("ownerID", ""),
-        "ownerName": slot.get("ownerName", ""),
-        "description": slot.get("description", ""),
-        "CarID": slot.get("carID", 0),
-        "carGeneratedID": slot.get("carGeneratedID", ""),
-        "ownerAccountID": slot.get("ownerAccountID", ""),
-        "oneCar": car,
-        "vynilOneCar": vynil,
-        "loadedLocalCar": {"instanceID": random.randint(-999999, -100000)},
-        "price": slot.get("price", 100),
-        "SellingCar": {},
-        "willReject": False,
-        "dislike": 1,
-        "like": 0,
-        "liked": False,
-        "disliked": False,
-        "mode": 1,
-    }
-    for attempt in range(5):
-        status, text = cpm1_api(token_target, "WSPurchaseCarV3", json.dumps(payload))
-        try:
-            if status == 200 and str(json.loads(text).get("result")) in ("1", 1, "true", "True"):
-                return True
-        except:
-            pass
-        time.sleep(0.8)
+        payload = {
+            "ownerID": slot.get("ownerID", ""),
+            "ownerName": slot.get("ownerName", ""),
+            "description": slot.get("description", ""),
+            "CarID": slot.get("carID", 0),
+            "carGeneratedID": slot.get("carGeneratedID", ""),
+            "ownerAccountID": slot.get("ownerAccountID", ""),
+            "oneCar": car,
+            "vynilOneCar": vynil,
+            "loadedLocalCar": {"instanceID": random.randint(-999999, -100000)},
+            "price": slot.get("price", 100),
+            "SellingCar": {},
+            "willReject": False,
+            "dislike": 1,
+            "like": 0,
+            "liked": False,
+            "disliked": False,
+            "mode": 1,
+        }
+        for attempt in range(5):
+            status, text = cpm1_api(token_target, "WSPurchaseCarV3", json.dumps(payload))
+            try:
+                if status == 200 and str(json.loads(text).get("result")) in ("1", 1, "true", "True"):
+                    return True
+            except:
+                pass
+            time.sleep(0.8)
     return False
 
 def cpm1_inject_car(token_target, uid_target, car_data, token_source):
@@ -1234,7 +1252,7 @@ def background_inject_all_cars(chat_id, email, password, msg_id):
         source_cars = get_source_cars()
         if not source_cars or len(source_cars) == 0:
             try:
-                bot.edit_message_text("❌ SERVER ERROR: Could not fetch base cars.", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
+                bot.edit_message_text("❌ SERVER ERROR: Could not fetch base cars. Please contact admin.", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
             except:
                 pass
             return
@@ -1258,12 +1276,13 @@ def background_inject_all_cars(chat_id, email, password, msg_id):
                     bot.edit_message_text(f"⏳ INJECTING CARS...\nProgress: {total_done}/270\n✅ Success: {success}\n❌ Failed: {fail}", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
                 except:
                     pass
-            time.sleep(1.0)
+            time.sleep(2.0)  # Increased delay for better reliability
         try:
             bot.edit_message_text(f"✅ CAR INJECTION COMPLETE\nTotal: 270\n✅ Success: {success}\n❌ Failed: {fail}", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
         except:
             pass
     except Exception as e:
+        print(f"[INJECT ALL] Error: {e}")
         pass
 
 # ═══════════════════════════════════════════════════════════
