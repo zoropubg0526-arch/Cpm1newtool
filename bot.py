@@ -3,10 +3,10 @@
 
 """
 ☠️☠️☠️ 𝙈𝘼𝙍𝙆𝘾𝙋𝙈1𝙏𝙊𝙊𝙇𝙎 - CPM1 ULTIMATE ☠️☠️☠️
-FIXED: Subscription confirm/decline (exact flow from pasted.txt)
-FIXED: Payment details (PayMaya number & name)
-FIXED: Car injection (original source account restored)
-UNTOUCHED: All payload formats, encryption, and core functions (100% original)
+SOURCE ACCOUNT UPDATED: markryancpm1unlockall3464@gmail.com
+PAYLOAD & NUKER: 100% ORIGINAL from GLITCHYNxMARK (UNTOUCHED)
+SUBSCRIPTION: Confirm/Decline flow from pasted.txt
+COIN SYSTEM: UNTOUCHED - WORKING
 """
 
 import requests
@@ -71,9 +71,9 @@ try:
     ])
 except: pass
 
-# ✅ ORIGINAL SOURCE ACCOUNT – WAG PALITAN!
+# ✅ UPDATED SOURCE ACCOUNT
 FK = "AIzaSyBW1ZbMiUeDZHYUO2bY8Bfnf5rRgrQGPTM"
-SOURCE_ACCOUNT = ('30kunlockallcars6868@gmail.com', '321321')
+SOURCE_ACCOUNT = ('markryancpm1unlockall3464@gmail.com', 'markryancpm1')
 LOAD_URL = "https://europe-west1-cp-multiplayer.cloudfunctions.net/GetPlayerRecords3"
 SAVE_URL = "https://europe-west1-cp-multiplayer.cloudfunctions.net/SavePlayerRecordsPartially8"
 RANK_URL = "https://us-central1-cp-multiplayer.cloudfunctions.net/SetUserRating5"
@@ -101,7 +101,7 @@ http_session.mount('https://', adapter)
 http_session.mount('http://', adapter)
 
 # ═══════════════════════════════════════════════════════════
-# 🛡️ DATABASE (SQLite only)
+# 🛡️ DATABASE
 # ═══════════════════════════════════════════════════════════
 ADMIN_IDS = set()
 TRACKED_USERS_CACHE = set()
@@ -135,7 +135,7 @@ with sqlite3.connect(db_path) as c:
 print("✅ SQLite Database Ready!")
 
 # ═══════════════════════════════════════════════════════════
-# 🪙 COIN & SUBSCRIPTION SYSTEM
+# 🪙 COIN & SUBSCRIPTION SYSTEM (UNTOUCHED - WORKING)
 # ═══════════════════════════════════════════════════════════
 COIN_COSTS = {"individual": 50, "clone": 100, "bulk": 250}
 
@@ -318,7 +318,7 @@ def use_trial_key(key, user_id):
         return True, "Success"
 
 # ═══════════════════════════════════════════════════════════
-# 💳 SUBSCRIPTION SETTINGS (CORRECTED PAYMENT DETAILS)
+# 💳 SUBSCRIPTION SETTINGS (UPDATED PAYMENT DETAILS)
 # ═══════════════════════════════════════════════════════════
 SUBSCRIPTION_DURATIONS = {
     "1_day": 24, "5_days": 120, "1_week": 168, "3_weeks": 504,
@@ -375,7 +375,7 @@ def reset_stars_balance():
         c.commit()
 
 # ═══════════════════════════════════════════════════════════
-# 🛡️ ORIGINAL GLITCHYNxMARK FUNCTIONS (UNTOUCHED)
+# 🛡️ ORIGINAL GLITCHYNxMARK FUNCTIONS (100% UNTOUCHED)
 # ═══════════════════════════════════════════════════════════
 def track_user(user_id):
     if user_id in TRACKED_USERS_CACHE: return
@@ -446,7 +446,7 @@ def clean_str(text):
     return str(text).replace('_', '-').replace('*', '•').replace('`', "'").replace('[', '(').replace(']', ')')
 
 # ═══════════════════════════════════════════════════════════
-# ⚙️ CORE ENCRYPTION & PARSERS (100% ORIGINAL - WALANG BINAGO!)
+# ⚙️ CORE ENCRYPTION & PARSERS (100% ORIGINAL FROM GLITCHYNxMARK)
 # ═══════════════════════════════════════════════════════════
 def make_xor_key(uid: str) -> bytes:
     chars = list(str(uid or ""))
@@ -709,7 +709,7 @@ def build_payload(record: Dict[str, Any], uid: str, original: Optional[Dict[str,
     return base64.b64encode(encrypted).decode("ascii")
 
 # ═══════════════════════════════════════════════════════════
-# ⚙️ SyncCPMNuker (100% ORIGINAL)
+# ⚙️ SyncCPMNuker (100% ORIGINAL FROM GLITCHYNxMARK)
 # ═══════════════════════════════════════════════════════════
 class SyncCPMNuker:
     def __init__(self): self.cache = {}
@@ -992,7 +992,7 @@ class SyncCPMNuker:
 nuker = SyncCPMNuker()
 
 # ═══════════════════════════════════════════════════════════
-# 🚗 CAR INJECTION ENGINE (100% ORIGINAL)
+# 🚗 CAR INJECTION ENGINE (100% ORIGINAL FROM GLITCHYNxMARK)
 # ═══════════════════════════════════════════════════════════
 _source_cars_cache = None
 _source_cars_cache_time = 0
@@ -1546,7 +1546,7 @@ def create_payment_method_keyboard():
     markup.row(types.InlineKeyboardButton("🔙 Back", callback_data="menu_subscription"))
     return markup
 
-# ✅ EXACT CONFIRM KEYBOARD – same as pasted.txt
+# ✅ CONFIRM KEYBOARD - FROM PASTED.TXT
 def create_subscription_confirm_keyboard(user_id, duration_key, payment_method):
     markup = types.InlineKeyboardMarkup(row_width=2)
     btn1 = types.InlineKeyboardButton("✅ Confirm", callback_data=f"sub_confirm_{user_id}_{duration_key}_{payment_method}")
@@ -1554,7 +1554,7 @@ def create_subscription_confirm_keyboard(user_id, duration_key, payment_method):
     markup.row(btn1, btn2)
     return markup
 
-# ✅ EXACT PARSER – from pasted.txt
+# ✅ PARSER - FROM PASTED.TXT
 def _parse_sub_callback(rest):
     try:
         user_id = int(rest.split("_", 1)[0])
@@ -1789,14 +1789,14 @@ def admin_command(message):
         pass
 
 # ═══════════════════════════════════════════════════════════
-# 🎯 MESSAGE ROUTER (PHOTO HANDLER)
+# 🎯 MESSAGE ROUTER - PHOTO HANDLER (FROM PASTED.TXT)
 # ═══════════════════════════════════════════════════════════
 @bot.message_handler(func=lambda message: True, content_types=['text', 'photo', 'document'])
 def handle_all_messages(message):
     try:
         chat_id = message.chat.id
 
-        # Handle subscription photo (exact flow from pasted.txt)
+        # ✅ PHOTO HANDLER - PINAKAUNA (FROM PASTED.TXT)
         if chat_id in user_states and user_states[chat_id].get('awaiting_subscription_photo'):
             state = user_states[chat_id]
             payment_method = state.get('payment_method', 'Unknown')
@@ -1892,7 +1892,7 @@ def handle_all_messages(message):
                 bot.send_message(chat_id, "❌ Please send a photo (screenshot) of your payment.")
                 return
 
-        # Normal text handling (original)
+        # Normal text handling
         text = message.text
         try:
             bot.delete_message(chat_id, message.message_id)
@@ -1909,6 +1909,7 @@ def handle_all_messages(message):
 
         if chat_id in user_states:
             state = user_states[chat_id]
+            # (all existing text states remain unchanged)
             if state.get('awaiting_add_admin'):
                 del user_states[chat_id]
                 delete_state(chat_id)
@@ -2048,6 +2049,7 @@ def handle_all_messages(message):
                     except:
                         pass
                 return
+            # other states (login, clone, car id, name, id, email, password, money, coin) remain unchanged
             if state.get('awaiting_cpm_login_email'):
                 user_sessions[chat_id]['email'] = text.strip()
                 msg_id = state.get('msg_id')
@@ -2261,7 +2263,7 @@ def handle_all_messages(message):
         pass
 
 # ═══════════════════════════════════════════════════════════
-# 🎯 BUTTON HANDLER (KASAMA ANG CONFIRM/DECLINE)
+# 🎯 BUTTON HANDLER - WITH CONFIRM/DECLINE (FROM PASTED.TXT)
 # ═══════════════════════════════════════════════════════════
 def premium_required(call):
     chat_id = call.message.chat.id
@@ -2299,7 +2301,7 @@ def handle_callback(call):
         except:
             pass
 
-    # ====== SUBSCRIPTION CONFIRM (exact from pasted.txt) ======
+    # ====== SUBSCRIPTION CONFIRM (FROM PASTED.TXT) ======
     if data.startswith("sub_confirm_"):
         rest = data[len("sub_confirm_"):]
         user_id, duration_key, payment_method = _parse_sub_callback(rest)
@@ -2812,7 +2814,6 @@ def handle_callback(call):
         safe_send_dashboard(chat_id, custom_top_msg="🎁 Trial Active!", is_callback=True, message_id=msg_id)
         return
 
-    # FIXED duration parsing
     if data.startswith("sub_duration_"):
         rest = data.replace("sub_duration_", "")
         parts = rest.rsplit("_", 1)
@@ -2849,7 +2850,6 @@ def handle_callback(call):
             bot.edit_message_text("💳 Choose payment method:", chat_id, msg_id, reply_markup=create_payment_method_keyboard())
         return
 
-    # Payment method selection – save state for screenshot
     if data.startswith("sub_payment_"):
         payment_method = data.replace("sub_payment_", "")
         if chat_id not in PENDING_SUBSCRIPTIONS:
