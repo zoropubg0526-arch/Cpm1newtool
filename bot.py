@@ -3,8 +3,9 @@
 
 """
 ☠️☠️☠️ 𝙈𝘼𝙍𝙆𝘾𝙋𝙈1𝙏𝙊𝙊𝙇𝙎 - CPM1 ULTIMATE ☠️☠️☠️
-FULLY FIXED: Login, Car Injection (vinyls), Bulk Clone, Progress Updates
+MERGED WITH WORKING CAR INJECTION ENGINE (DESIGNS PRESERVED)
 SOURCE ACCOUNT: markryancpm1unlockall2541@gmail.com
+OPTIMIZED: Bulk clone 1-10 accounts with progress & ETA
 """
 
 import requests
@@ -39,7 +40,7 @@ from flask import Flask, jsonify
 app = Flask(__name__)
 @app.route('/')
 def home():
-    return jsonify({"status": "MARKCPM1TOOLS Online", "version": "21.3"})
+    return jsonify({"status": "MARKCPM1TOOLS Online", "version": "21.6"})
 @app.route('/health')
 def health(): return jsonify({"status": "healthy"})
 def run_flask():
@@ -72,7 +73,7 @@ except: pass
 
 # ✅ UPDATED SOURCE ACCOUNT
 FK = "AIzaSyBW1ZbMiUeDZHYUO2bY8Bfnf5rRgrQGPTM"
-SOURCE_ACCOUNT = ('markryancpm1unlockall4333@gmail.com', 'markryancpm1')
+SOURCE_ACCOUNT = ('markryancpm1unlockall7113@gmail.com', 'markryancpm1')
 LOAD_URL = "https://europe-west1-cp-multiplayer.cloudfunctions.net/GetPlayerRecords3"
 SAVE_URL = "https://europe-west1-cp-multiplayer.cloudfunctions.net/SavePlayerRecordsPartially8"
 RANK_URL = "https://us-central1-cp-multiplayer.cloudfunctions.net/SetUserRating5"
@@ -991,66 +992,30 @@ class SyncCPMNuker:
 nuker = SyncCPMNuker()
 
 # ═══════════════════════════════════════════════════════════
-# 🚗 CAR INJECTION ENGINE - FIXED to always fetch full car data
+# 🚗 CAR INJECTION ENGINE - EXACT REFERENCE FROM WORKING BOT
 # ═══════════════════════════════════════════════════════════
+
 _source_cars_cache = None
 _source_cars_cache_time = 0
 _source_cars_lock = threading.Lock()
-_source_token_cache = None
-_source_token_cache_time = 0
-
-def get_source_token():
-    global _source_token_cache, _source_token_cache_time
-    now = time.time()
-    if _source_token_cache and now - _source_token_cache_time < 300:
-        return _source_token_cache
-    tok, uid = verify_user(*SOURCE_ACCOUNT)
-    if tok:
-        _source_token_cache = tok
-        _source_token_cache_time = now
-        return tok
-    return None
 
 def verify_user(email, password):
     payload = {"email": email, "password": password, "returnSecureToken": True, "clientType": "CLIENT_TYPE_ANDROID"}
     try:
-        response = http_session.post(f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword", json=payload, params={"key": FK}, timeout=20)
+        response = http_session.post(f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword", json=payload, params={"key": FK}, timeout=15)
         if response.status_code == 200:
             d = response.json()
             return d.get("idToken"), d.get("localId")
-        print(f"[SOURCE LOGIN] Status: {response.status_code}, Response: {response.text[:200]}")
         return None, None
-    except Exception as e:
-        print(f"[SOURCE LOGIN] Error: {e}")
-        return None, None
+    except: return None, None
 
 def cpm1_api(token, endpoint, data=None):
     headers = deepcopy(GAME_HEADERS)
     headers["Authorization"] = f"Bearer {token}"
     try:
-        response = http_session.post(f"https://europe-west1-cp-multiplayer.cloudfunctions.net/{endpoint}", json={"data": data}, headers=headers, timeout=15)
+        response = http_session.post(f"https://europe-west1-cp-multiplayer.cloudfunctions.net/{endpoint}", json={"data": data}, headers=headers, timeout=20)
         return response.status_code, response.text
-    except Exception as e:
-        print(f"[API CALL] Error for {endpoint}: {e}")
-        return 500, json.dumps({"result": "error"})
-
-def get_source_cars():
-    global _source_cars_cache, _source_cars_cache_time
-    with _source_cars_lock:
-        if _source_cars_cache and time.time() - _source_cars_cache_time < 60:
-            return _source_cars_cache
-    stok = get_source_token()
-    if not stok:
-        print("[SOURCE CARS] Source auth failed.")
-        return []
-    cars = cpm1_get_cars(stok)
-    if cars:
-        with _source_cars_lock:
-            _source_cars_cache = cars
-            _source_cars_cache_time = time.time()
-    else:
-        print("[SOURCE CARS] Failed to get cars from source.")
-    return _source_cars_cache or []
+    except: return 500, json.dumps({"result": "error"})
 
 def cpm1_get_cars(token):
     endpoints = [
@@ -1060,8 +1025,7 @@ def cpm1_get_cars(token):
     ]
     for endpoint, data in endpoints:
         status, text = cpm1_api(token, endpoint, data)
-        if status != 200:
-            continue
+        if status != 200: continue
         try:
             raw = json.loads(text)
             result = raw.get("result", raw)
@@ -1073,56 +1037,47 @@ def cpm1_get_cars(token):
                 for key in ["cars", "CarList", "data", "list"]:
                     if isinstance(result.get(key), list) and len(result[key]) > 0:
                         return result[key]
-        except Exception as e:
-            print(f"[CARS PARSE] Error parsing {endpoint}: {e}")
-            continue
+        except: continue
     return None
 
 def cpm1_get_full_car(token, car_data):
     cid = car_data.get("CarID") or car_data.get("carID") or 0
     gen = car_data.get("carGeneratedID") or car_data.get("CarGeneratedID") or ""
-    # Try multiple combinations
     payloads = [
         {"CarID": cid, "carGeneratedID": gen},
         {"CarID": cid},
         {"carGeneratedID": gen},
-        car_data,  # entire dict
+        car_data,
     ]
     for p in payloads:
         for endpoint in ["WSGetFullCarV3", "WSGetFullCarV2", "GetFullCar"]:
             try:
                 status, text = cpm1_api(token, endpoint, json.dumps(p))
-                if status != 200:
-                    continue
+                if status != 200: continue
                 raw = json.loads(text)
                 result = raw.get("result", raw)
                 if isinstance(result, str):
-                    try:
-                        result = json.loads(result)
-                    except:
-                        pass
+                    try: result = json.loads(result)
+                    except: pass
                 if isinstance(result, dict) and (result.get("CarID") or result.get("carID")):
                     return result
                 if isinstance(result, list) and result:
                     for item in result:
-                        if not isinstance(item, dict):
-                            continue
+                        if not isinstance(item, dict): continue
                         if item.get("CarID") == cid or item.get("carID") == cid:
                             return item
-            except:
-                continue
+            except: continue
     return None
 
 def cpm1_get_garage_slot(token):
     for param in [20, 10, 50, 100]:
-        for attempt in range(3):
+        for attempt in range(2):
             try:
                 status, text = cpm1_api(token, "WSGetCarListV3", param)
                 if status == 200:
                     data = json.loads(text)
                     result = data.get('result')
-                    if isinstance(result, str):
-                        result = json.loads(result)
+                    if isinstance(result, str): result = json.loads(result)
                     if result and isinstance(result, list) and len(result) > 0:
                         for slot in result:
                             if slot.get('carID', 0) == 0 and 'carGeneratedID' in slot:
@@ -1130,18 +1085,16 @@ def cpm1_get_garage_slot(token):
                         for slot in result:
                             if 'carGeneratedID' in slot:
                                 return slot
-            except:
-                pass
+            except: pass
             time.sleep(0.5)
     return None
 
 def cpm1_fix_car_appearance(car):
-    if not isinstance(car, dict):
-        return car
+    """EXACT reference function - fixes colors, removes police, avoids black."""
+    if not isinstance(car, dict): return car
     car = json.loads(json.dumps(car))
     vyn = car.get("Vynils")
-    if not isinstance(vyn, dict):
-        vyn = {}
+    if not isinstance(vyn, dict): vyn = {}
     if "CarID" not in vyn and car.get("CarID") is not None:
         vyn["CarID"] = car.get("CarID")
     car["Vynils"] = vyn
@@ -1153,20 +1106,22 @@ def cpm1_fix_car_appearance(car):
         else:
             fixed = []
             for x in val:
-                try:
-                    fx = float(x)
-                except Exception:
-                    fx = default
+                try: fx = float(x)
+                except Exception: fx = default
+                if fx == 0.0: fx = 1.0  # Prevent black car bug
                 fixed.append(fx)
             car[key] = fixed
 
     for key, ln in (("colors", 4), ("Colors", 4), ("bodyColor", 4), ("paint", 4)):
         if key in car or key in ("colors", "Colors"):
             ensure_color_list(key, ln, 0.85)
+            
+    if isinstance(car.get("color"), (int, float)) and float(car.get("color") or 0) == 0:
+        car["color"] = 1
+        
     car["police"] = False
     car["isLocked"] = False
-    if car.get("engineID") in (None, 0):
-        car["engineID"] = 5
+    if car.get("engineID") in (None, 0): car["engineID"] = 5
     car["cdi"] = True
     car["torque"] = car.get("torque") or 3000.0
     car["brake"] = car.get("brake") or 3000.0
@@ -1176,12 +1131,9 @@ def cpm1_fix_car_appearance(car):
 def cpm1_clone_car(token_target, car_data, target_uid, token_source=None):
     cid = car_data.get("CarID", 0) or car_data.get("carID", 0)
     full = None
-    # Always try to fetch full car if source token available
     if token_source:
-        try:
-            full = cpm1_get_full_car(token_source, car_data)
-        except:
-            pass
+        try: full = cpm1_get_full_car(token_source, car_data)
+        except: full = None
     base = full if isinstance(full, dict) else car_data
     car = cpm1_fix_car_appearance(base)
     car["CarID"] = cid
@@ -1190,170 +1142,177 @@ def cpm1_clone_car(token_target, car_data, target_uid, token_source=None):
             car["texts"][2] = f"{str(target_uid)[:8].upper()}_{cid}_HZ"
         elif "texts" in car and isinstance(car["texts"], str):
             car["texts"] = ["", "", f"{str(target_uid)[:8].upper()}_{cid}_HZ"]
-    except:
-        pass
-    if isinstance(car.get("Vynils"), dict):
-        car["Vynils"]["CarID"] = cid
-        vynil = car["Vynils"]
-    else:
-        vynil = {"CarID": cid}
-
-    for retry in range(3):
-        slot = cpm1_get_garage_slot(token_target)
-        if not slot:
-            for attempt in range(3):
-                status, text = cpm1_api(token_target, "WSCreateCarSlot", json.dumps({"mode": 1}))
-                if status == 200:
-                    try:
-                        result = json.loads(text).get("result")
-                        if isinstance(result, str):
-                            result = json.loads(result)
-                        if isinstance(result, dict) and result.get("carGeneratedID"):
-                            slot = result
-                            break
-                    except:
-                        pass
-                time.sleep(0.5)
-            if not slot:
-                continue
-
-        payload = {
-            "ownerID": slot.get("ownerID", ""),
-            "ownerName": slot.get("ownerName", ""),
-            "description": slot.get("description", ""),
-            "CarID": slot.get("carID", 0),
-            "carGeneratedID": slot.get("carGeneratedID", ""),
-            "ownerAccountID": slot.get("ownerAccountID", ""),
-            "oneCar": car,
-            "vynilOneCar": vynil,
-            "loadedLocalCar": {"instanceID": random.randint(-999999, -100000)},
-            "price": slot.get("price", 100),
-            "SellingCar": {},
-            "willReject": False,
-            "dislike": 1,
-            "like": 0,
-            "liked": False,
-            "disliked": False,
-            "mode": 1,
-        }
-        for attempt in range(5):
-            status, text = cpm1_api(token_target, "WSPurchaseCarV3", json.dumps(payload))
-            try:
-                if status == 200 and str(json.loads(text).get("result")) in ("1", 1, "true", "True"):
-                    return True
-            except:
-                pass
-            time.sleep(0.8)
+    except: pass
+    try:
+        if isinstance(car.get("Vynils"), dict):
+            car["Vynils"]["CarID"] = cid
+    except: pass
+    
+    slot = cpm1_get_garage_slot(token_target)
+    if not slot: return False
+    
+    vynil = car.get("Vynils") if isinstance(car.get("Vynils"), dict) else {}
+    if not vynil: vynil = {"CarID": cid}
+        
+    payload = {
+        "ownerID": slot.get("ownerID", ""),
+        "ownerName": slot.get("ownerName", ""),
+        "description": slot.get("description", ""),
+        "CarID": slot.get("carID", 0),
+        "carGeneratedID": slot.get("carGeneratedID", ""),
+        "ownerAccountID": slot.get("ownerAccountID", ""),
+        "oneCar": car,
+        "vynilOneCar": vynil,
+        "loadedLocalCar": {"instanceID": random.randint(-999999, -100000)},
+        "price": slot.get("price", 100),
+        "SellingCar": {},
+        "willReject": False,
+        "dislike": 1,
+        "like": 0,
+        "liked": False,
+        "disliked": False,
+        "mode": 1,
+    }
+    for attempt in range(3):
+        status, text = cpm1_api(token_target, "WSPurchaseCarV3", json.dumps(payload))
+        try:
+            if status == 200 and str(json.loads(text).get("result")) in ("1", 1, "true", "True"):
+                return True
+        except: pass
+        time.sleep(0.8)
     return False
 
 def cpm1_inject_car(token_target, uid_target, car_data, token_source=None):
-    # If no source token, try to get one globally
     if token_source is None:
-        token_source = get_source_token()
+        stok, _ = verify_user(*SOURCE_ACCOUNT)
+        token_source = stok
     return cpm1_clone_car(token_target, car_data, uid_target, token_source)
+
+def get_source_cars_cached():
+    global _source_cars_cache, _source_cars_cache_time
+    with _source_cars_lock:
+        if _source_cars_cache and time.time() - _source_cars_cache_time < 60:
+            return _source_cars_cache
+    stok, _ = verify_user(*SOURCE_ACCOUNT)
+    if not stok:
+        print("[SOURCE CARS] Source auth failed.")
+        return []
+    cars = cpm1_get_cars(stok)
+    if cars:
+        _source_cars_cache = cars
+        _source_cars_cache_time = time.time()
+    return _source_cars_cache or []
 
 def background_inject_all_cars(chat_id, email, password, msg_id):
     try:
-        try:
-            bot.edit_message_text("⏳ INJECTING CARS...\nPreparing source...", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
-        except:
-            pass
+        try: bot.edit_message_text("⏳ INJECTING CARS...\n⚙️ Loading source...\n\n🚗 Vehicles", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
+        except: pass
+        
         web_uid = get_web_uid(chat_id)
         ok, msg_auth, tok = nuker.get_auth(web_uid)
         td = nuker.get_token_data(web_uid)
         uid = td.get("firebase_uid") if td else None
+        
         if not ok or not tok or not uid:
-            try:
-                bot.edit_message_text("❌ Auth Failed. Login again.", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
-            except:
-                pass
+            try: bot.edit_message_text("❌ Auth Failed. Login again.\n\n🚗 Vehicles", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
+            except: pass
             return
-        # Get source token once
-        source_token = get_source_token()
-        if not source_token:
-            try:
-                bot.edit_message_text("❌ Could not authenticate source account. Please contact admin.", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
-            except:
-                pass
+            
+        stok, _ = verify_user(*SOURCE_ACCOUNT)
+        if not stok:
+            try: bot.edit_message_text("❌ Source account unavailable.\n\n🚗 Vehicles", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
+            except: pass
             return
-        source_cars = get_source_cars()
+            
+        source_cars = get_source_cars_cached()
         if not source_cars or len(source_cars) == 0:
-            try:
-                bot.edit_message_text("❌ SERVER ERROR: Could not fetch base cars. Please contact admin.", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
-            except:
-                pass
+            try: bot.edit_message_text("❌ No cars found in source.\n\n🚗 Vehicles", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
+            except: pass
             return
+            
         success = 0
         fail = 0
-        for car_id in range(1, 271):
-            car_data = None
-            for c in source_cars:
-                if int(c.get("CarID", 0)) == car_id:
-                    car_data = c
-                    break
-            if car_data is None:
-                car_data = source_cars[0]
-            # Pass source token to get full car
-            if cpm1_inject_car(tok, uid, car_data, source_token):
+        total = len(source_cars)
+        start_time = time.time()
+        
+        for idx, car_data in enumerate(source_cars):
+            if cpm1_clone_car(tok, car_data, uid, token_source=stok):
                 success += 1
             else:
                 fail += 1
-            total_done = success + fail
-            if total_done % 10 == 0 or total_done == 270:
+            
+            done = idx + 1
+            if done % 10 == 0 or done == total:
+                elapsed = time.time() - start_time
+                avg = elapsed / done if done > 0 else 0
+                remaining = (total - done) * avg
+                percent = int((done / total) * 100)
+                filled = int(percent / 5)
+                bar = "█" * filled + "▒" * (20 - filled)
+                eta = f" ETA: {int(remaining)}s" if remaining > 0 else ""
                 try:
-                    bot.edit_message_text(f"⏳ INJECTING CARS...\nProgress: {total_done}/270\n✅ Success: {success}\n❌ Failed: {fail}", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
-                except:
-                    pass
-            time.sleep(2.0)
-        try:
-            bot.edit_message_text(f"✅ CAR INJECTION COMPLETE\nTotal: 270\n✅ Success: {success}\n❌ Failed: {fail}", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
-        except:
-            pass
+                    bot.edit_message_text(f"⏳ INJECTING CARS...\n{bar} {percent}%\n({done}/{total}){eta}\n✅ Success: {success}\n❌ Failed: {fail}\n\n🚗 Vehicles", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
+                except: pass
+            time.sleep(0.8)
+            
+        try: bot.edit_message_text(f"✅ CAR INJECTION COMPLETE!\nTotal: {total}\n✅ Success: {success}\n❌ Failed: {fail}\n\n🚗 Vehicles", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
+        except: pass
     except Exception as e:
-        print(f"[INJECT ALL] Error: {e}")
         pass
 
 # ═══════════════════════════════════════════════════════════
-# 🧩 BULK CLONE (OPTIMIZED FOR RENDER - LOW MEMORY) + ANIMATION
+# 🧩 BULK CLONE - OPTIMIZED WITH PROGRESS & ETA
 # ═══════════════════════════════════════════════════════════
-def full_account_clone(src_record, src_cars, tgt_email, tgt_pass, source_token=None, progress_callback=None):
+
+def full_account_clone_parallel(src_record, src_cars, tgt_email, tgt_pass, source_token=None, progress_callback=None):
     try:
         t_res = nuker.login(tgt_email, tgt_pass)
         if not t_res.get("ok"):
             return False, {"error": "Target login failed"}
         t_auth, t_uid = t_res["auth"], t_res["firebase_uid"]
+        
         nuker.load(t_uid, force=True)
         t_record = nuker.get_record(t_uid, tgt_email) or {}
-        safe_keys = ['money','coin','floats','integers','animations','wheels','personEquipmentsMale','personEquipmentsFemale','boughtFsos','emojiPacks']
+        
+        safe_keys = ['money', 'coin', 'floats', 'integers', 'animations', 'wheels', 'personEquipmentsMale', 'personEquipmentsFemale', 'boughtFsos', 'emojiPacks']
         for k in safe_keys:
             if k in src_record:
                 t_record[k] = deepcopy(src_record[k])
+                
         t_record['boughtPoliceSirens'] = []
         t_record['boughtPoliceLights'] = []
-        safe_keys.extend(['boughtPoliceSirens','boughtPoliceLights'])
+        safe_keys.extend(['boughtPoliceSirens', 'boughtPoliceLights'])
+                
         ok, msg = nuker._send(t_auth, t_record, t_uid, original=None, force_fields=set(safe_keys))
-        if not ok:
-            nuker._modify(t_uid, {"money": src_record.get('money', 0), "coin": src_record.get('coin', 0)})
+        if not ok: nuker._modify(t_uid, {"money": src_record.get('money', 0), "coin": src_record.get('coin', 0)})
 
         success_count = 0
         fail_count = 0
         total_cars = len(src_cars)
         completed_cars = 0
-        
-        # Sequential to reduce memory usage
-        for car in src_cars:
-            if not isinstance(car, dict):
-                continue
-            if cpm1_clone_car(t_auth, car, t_uid, token_source=source_token):
-                success_count += 1
-            else:
-                fail_count += 1
-            completed_cars += 1
-            if progress_callback:
-                progress_callback(completed_cars, total_cars)
-            time.sleep(1.5)
-            if completed_cars % 20 == 0:
-                gc.collect()
+        lock = threading.Lock()
+        start_time = time.time()
+
+        def process_car(car):
+            if not isinstance(car, dict): return False
+            time.sleep(0.5)
+            return cpm1_clone_car(t_auth, car, t_uid, token_source=source_token)
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+            futures = {executor.submit(process_car, car): car for car in src_cars}
+            for future in concurrent.futures.as_completed(futures):
+                if future.result():
+                    with lock: success_count += 1
+                else:
+                    with lock: fail_count += 1
+                
+                with lock:
+                    completed_cars += 1
+                    if progress_callback:
+                        elapsed = time.time() - start_time
+                        avg = elapsed / completed_cars if completed_cars > 0 else 0
+                        remaining = (total_cars - completed_cars) * avg
+                        progress_callback(completed_cars, total_cars, remaining)
 
         return True, {"total": total_cars, "success": success_count, "fail": fail_count}
     except Exception as e:
@@ -1361,10 +1320,8 @@ def full_account_clone(src_record, src_cars, tgt_email, tgt_pass, source_token=N
 
 def background_single_clone(chat_id, src_email, src_pass, tgt_email, tgt_pass, msg_id):
     try:
-        try:
-            bot.edit_message_text("⏳ CLONING IN PROGRESS...\n[>                   ] 0%", chat_id, msg_id, reply_markup=create_account_keyboard())
-        except:
-            pass
+        try: bot.edit_message_text("⏳ CLONING IN PROGRESS...\n⚙️ Loading source...\n\n👤 Account Management", chat_id, msg_id, reply_markup=create_account_keyboard())
+        except: pass
         
         source_token, source_uid = verify_user(src_email, src_pass)
         if not source_token:
@@ -1377,76 +1334,88 @@ def background_single_clone(chat_id, src_email, src_pass, tgt_email, tgt_pass, m
         
         last_edit_time = [0]
         
-        def update_progress(current, total):
-            if total == 0:
-                total = 1
+        def update_progress(current, total, remaining):
+            if total == 0: total = 1
             now = time.time()
             if now - last_edit_time[0] < 2.5 and current != total:
                 return
             last_edit_time[0] = now
             percent = int((current / total) * 100)
-            filled = int(percent / 5) 
+            filled = int(percent / 5)
             bar = "█" * filled + "▒" * (20 - filled)
-            text = f"⏳ Cloning Engine ...\n{bar} {percent}%\n({current}/{total})"
+            eta = f" ETA: {int(remaining)}s" if remaining > 0 else ""
+            text = f"⏳ CLONING IN PROGRESS...\n{bar} {percent}%\n({current}/{total}){eta}\n\n👤 Account Management"
             try:
-                bot.edit_message_text(text, chat_id, msg_id)
-            except Exception:
-                pass 
+                bot.edit_message_text(text, chat_id, msg_id, reply_markup=create_account_keyboard())
+            except: pass
 
-        res = full_account_clone(src_record, cars, tgt_email, tgt_pass, source_token, progress_callback=update_progress)
-      
+        res = full_account_clone_parallel(src_record, cars, tgt_email, tgt_pass, source_token, progress_callback=update_progress)
+        
         if res[0] == True:
-            msg = f"✅ CLONE SUCCESSFUL\n🚗 Cars: {res[1]['success']}/{res[1]['total']}\n\n👤 Account Management"
+            msg = f"✅ CLONE SUCCESSFUL!\n🚗 Cars: {res[1]['success']}/{res[1]['total']}\n\n👤 Account Management"
         else:
             err = clean_str(res[1].get('error', 'SAVE-FAILED'))
             msg = f"❌ CLONE FAILED\nError: {err}\n\n👤 Account Management"
 
-        try:
-            bot.edit_message_text(msg, chat_id, msg_id, reply_markup=create_account_keyboard())
-        except:
-            pass
+        try: bot.edit_message_text(msg, chat_id, msg_id, reply_markup=create_account_keyboard())
+        except: pass
     except Exception as e:
         pass
 
+def clone_task(src_record, src_cars, i, res_list, source_token):
+    t_email = f"glitchyn{random.randint(10000,99999)}@gmail.com"
+    t_pass = f"glitchyn{random.randint(10000,99999)}"
+    for attempt in range(3):
+        try:
+            r = http_session.post(f"https://identitytoolkit.googleapis.com/v1/accounts:signUp?key={FK}", json={"email": t_email, "password": t_pass, "returnSecureToken": True}, timeout=15)
+            if "idToken" in r.text: break
+        except: pass
+        time.sleep(1)
+        
+    clone_res = full_account_clone_parallel(src_record, src_cars, t_email, t_pass, source_token)
+    if clone_res[0] == True: 
+        res_list.append(f"✅ ID {i+1} ({clone_res[1]['success']} Cars)\n📧 {t_email}\n🔑 {t_pass}")
+    else: 
+        err = clean_str(clone_res[1].get('error', 'SAVE-FAILED'))
+        res_list.append(f"⚠️ ID {i+1} FAILED: {err[:30]}\n📧 {t_email}\n🔑 {t_pass}")
+    gc.collect()
+
 def background_bulk_clone(chat_id, src_email, src_pass, count, msg_id):
     try:
-        bot.edit_message_text("⏳ BULK CLONING...\n⚙️ Loading source account...\n\n👑 Overseer Panel", chat_id, msg_id, reply_markup=create_admin_keyboard())
+        try: bot.edit_message_text(f"⏳ BULK CLONING...\n⚙️ Loading source...\n\n👑 Overseer Panel", chat_id, msg_id, reply_markup=create_admin_keyboard())
+        except: pass
+        
         source_token, source_uid = verify_user(src_email, src_pass)
         if not source_token:
             bot.edit_message_text(f"❌ BULK CLONE FAILED\nError: Source login failed\n\n👑 Overseer Panel", chat_id, msg_id, reply_markup=create_admin_keyboard())
             return
-        
-        bot.edit_message_text("⏳ BULK CLONING...\n📂 Loading player record...\n\n👑 Overseer Panel", chat_id, msg_id, reply_markup=create_admin_keyboard())
+            
         nuker.load(source_uid, force=True)
         src_record = nuker.get_record(source_uid, src_email) or {}
-        
-        bot.edit_message_text("⏳ BULK CLONING...\n🚗 Fetching car list from source...\n\n👑 Overseer Panel", chat_id, msg_id, reply_markup=create_admin_keyboard())
         cars = cpm1_get_cars(source_token) or []
-        if not cars:
-            bot.edit_message_text(f"❌ BULK CLONE FAILED\nError: No cars found in source\n\n👑 Overseer Panel", chat_id, msg_id, reply_markup=create_admin_keyboard())
-            return
         
         res_list = []
-        total_clones = count
-        completed_clones = 0
+        completed = 0
+        total = count
+        start_time = time.time()
         
         def update_bulk_progress():
-            nonlocal completed_clones
-            if completed_clones >= total_clones:
+            nonlocal completed
+            if completed >= total:
                 final_text = "📦 BULK CLONE REPORT\n┣━━━━━━━━━━━━━━━━━━┫\n\n" + "\n\n".join(sorted(res_list)) + "\n\n👑 Overseer Panel"
-                try:
-                    bot.edit_message_text(final_text, chat_id, msg_id, reply_markup=create_admin_keyboard())
-                except:
-                    pass
+                try: bot.edit_message_text(final_text, chat_id, msg_id, reply_markup=create_admin_keyboard())
+                except: pass
                 return
-            percent = int((completed_clones / total_clones) * 100)
+            percent = int((completed / total) * 100)
             filled = int(percent / 5)
             bar = "█" * filled + "▒" * (20 - filled)
-            text = f"⏳ BULK CLONING {completed_clones}/{total_clones}\n{bar} {percent}%\n\n👑 Overseer Panel"
-            try:
-                bot.edit_message_text(text, chat_id, msg_id, reply_markup=create_admin_keyboard())
-            except:
-                pass
+            elapsed = time.time() - start_time
+            avg = elapsed / completed if completed > 0 else 0
+            remaining = (total - completed) * avg
+            eta = f" ETA: {int(remaining)}s" if remaining > 0 else ""
+            text = f"⏳ BULK CLONING {completed}/{total}\n{bar} {percent}%{eta}\n\n👑 Overseer Panel"
+            try: bot.edit_message_text(text, chat_id, msg_id, reply_markup=create_admin_keyboard())
+            except: pass
         
         for i in range(count):
             bot.edit_message_text(f"⏳ BULK CLONING\nCloning account {i+1}/{count}...\n\n👑 Overseer Panel", chat_id, msg_id, reply_markup=create_admin_keyboard())
@@ -1456,36 +1425,30 @@ def background_bulk_clone(chat_id, src_email, src_pass, count, msg_id):
             for attempt in range(3):
                 try:
                     r = http_session.post(f"https://identitytoolkit.googleapis.com/v1/accounts:signUp?key={FK}", json={"email": t_email, "password": t_pass, "returnSecureToken": True}, timeout=15)
-                    if "idToken" in r.text:
-                        break
-                except:
-                    pass
+                    if "idToken" in r.text: break
+                except: pass
                 time.sleep(1)
             
-            clone_res = full_account_clone(src_record, cars, t_email, t_pass, source_token)
+            clone_res = full_account_clone_parallel(src_record, cars, t_email, t_pass, source_token)
             if clone_res[0] == True:
                 res_list.append(f"✅ ID {i+1} ({clone_res[1]['success']} Cars)\n📧 {t_email}\n🔑 {t_pass}")
             else:
                 err = clean_str(clone_res[1].get('error', 'SAVE-FAILED'))
                 res_list.append(f"⚠️ ID {i+1} FAILED: {err[:30]}\n📧 {t_email}\n🔑 {t_pass}")
             
-            completed_clones += 1
+            completed += 1
             update_bulk_progress()
             gc.collect()
         
         final_text = "📦 BULK CLONE REPORT\n┣━━━━━━━━━━━━━━━━━━┫\n\n" + "\n\n".join(sorted(res_list)) + "\n\n👑 Overseer Panel"
-        try:
-            bot.edit_message_text(final_text, chat_id, msg_id, reply_markup=create_admin_keyboard())
-        except:
-            pass
+        try: bot.edit_message_text(final_text, chat_id, msg_id, reply_markup=create_admin_keyboard())
+        except: pass
     except Exception as e:
-        try:
-            bot.edit_message_text(f"❌ BULK CLONE ERROR\n{e}\n\n👑 Overseer Panel", chat_id, msg_id, reply_markup=create_admin_keyboard())
-        except:
-            pass
+        try: bot.edit_message_text(f"❌ BULK CLONE ERROR\n{e}\n\n👑 Overseer Panel", chat_id, msg_id, reply_markup=create_admin_keyboard())
+        except: pass
 
 # ═══════════════════════════════════════════════════════════
-# 🤖 UI & KEYBOARDS
+# 🤖 UI & KEYBOARDS (UNTOUCHED - KEEP ORIGINAL)
 # ═══════════════════════════════════════════════════════════
 def get_role_badge(chat_id):
     if is_admin(chat_id):
@@ -1668,7 +1631,7 @@ def safe_send_dashboard(chat_id, custom_top_msg=None, force_refresh=False, is_ca
         pass
 
 # ═══════════════════════════════════════════════════════════
-# 📋 ADMIN COMMANDS
+# 📋 ADMIN COMMANDS (UNTOUCHED)
 # ═══════════════════════════════════════════════════════════
 @bot.message_handler(commands=['addcoins'])
 def addcoins_command(message):
@@ -1850,7 +1813,7 @@ def login_command(message):
         bot.send_message(chat_id, "❌ API Timeout.")
 
 # ═══════════════════════════════════════════════════════════
-# 🎯 MESSAGE ROUTER - FULLY FIXED LOGIN STATES
+# 🎯 MESSAGE ROUTER
 # ═══════════════════════════════════════════════════════════
 @bot.message_handler(func=lambda message: True, content_types=['text', 'photo', 'document'])
 def handle_all_messages(message):
@@ -1953,7 +1916,7 @@ def handle_all_messages(message):
                 bot.send_message(chat_id, "❌ Please send a photo (screenshot) of your payment.")
                 return
 
-        # ✅ TEXT HANDLER - dapat UNA ang login states
+        # ✅ TEXT HANDLER
         if chat_id in user_states:
             state = user_states[chat_id]
 
@@ -2000,7 +1963,7 @@ def handle_all_messages(message):
                         pass
                 return
 
-            # ===== OTHER STATES (unchanged) =====
+            # ===== OTHER STATES =====
             if state.get('awaiting_add_admin'):
                 del user_states[chat_id]
                 delete_state(chat_id)
@@ -2213,17 +2176,28 @@ def handle_all_messages(message):
                             except:
                                 pass
                             return
-                        src_cars = get_source_cars()
-                        if not src_cars:
+                        stok, _ = verify_user(*SOURCE_ACCOUNT)
+                        if not stok:
                             try:
                                 bot.edit_message_text("❌ Source unavailable.", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
                             except:
                                 pass
                             return
-                        car_data = next((c for c in src_cars if int(c.get("CarID", 0)) == car_id), None)
+                        source_cars = get_source_cars_cached()
+                        if not source_cars:
+                            try:
+                                bot.edit_message_text("❌ No cars in source.", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
+                            except:
+                                pass
+                            return
+                        car_data = next((c for c in source_cars if int(c.get("CarID", 0)) == car_id), None)
                         if not car_data:
-                            car_data = src_cars[0]
-                        if cpm1_inject_car(tok, td.get("firebase_uid"), car_data, get_source_token()):
+                            try:
+                                bot.edit_message_text(f"❌ Car ID {car_id} not found.", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
+                            except:
+                                pass
+                            return
+                        if cpm1_clone_car(tok, car_data, td.get("firebase_uid"), token_source=stok):
                             try:
                                 bot.edit_message_text(f"✅ Car ID {car_id} Unlocked!", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
                             except:
@@ -2311,7 +2285,7 @@ def handle_all_messages(message):
                         pass
                 return
 
-        # Normal text (kung walang state)
+        # Normal text
         text = message.text
         try:
             bot.delete_message(chat_id, message.message_id)
@@ -2326,7 +2300,7 @@ def handle_all_messages(message):
         pass
 
 # ═══════════════════════════════════════════════════════════
-# 🎯 BUTTON HANDLER - WITH CONFIRM/DECLINE
+# 🎯 BUTTON HANDLER
 # ═══════════════════════════════════════════════════════════
 def premium_required(call):
     chat_id = call.message.chat.id
@@ -2782,7 +2756,7 @@ def handle_callback(call):
         if not check_and_deduct_coins(chat_id, COIN_COSTS['bulk'], "Unlock All Cars"):
             return
         try:
-            bot.edit_message_text("⚠️ MASS INJECTION\nThis will inject 270 cars.\nProceed?", chat_id, msg_id, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton("✅ YES", callback_data="start_car_inject"), types.InlineKeyboardButton("❌ CANCEL", callback_data="menu_vehicles")))
+            bot.edit_message_text("⚠️ MASS INJECTION\nThis will inject cars from source.\nProceed?", chat_id, msg_id, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton("✅ YES", callback_data="start_car_inject"), types.InlineKeyboardButton("❌ CANCEL", callback_data="menu_vehicles")))
         except:
             pass
         return
