@@ -3,9 +3,9 @@
 
 """
 ☠️☠️☠️ 𝙈𝘼𝙍𝙆𝘾𝙋𝙈1𝙏𝙊𝙊𝙇𝙎 - CPM1 ULTIMATE ☠️☠️☠️
-MERGED WITH WORKING CAR INJECTION ENGINE (DESIGNS PRESERVED)
+FIXED: Using partner's working car injection engine (full car data with vinyls).
 SOURCE ACCOUNT: markryancpm1unlockall2541@gmail.com
-OPTIMIZED: Bulk clone 1-10 accounts with progress & ETA
+OPTIMIZED: Bulk clone 1-10 with progress & ETA.
 """
 
 import requests
@@ -40,7 +40,7 @@ from flask import Flask, jsonify
 app = Flask(__name__)
 @app.route('/')
 def home():
-    return jsonify({"status": "MARKCPM1TOOLS Online", "version": "21.6"})
+    return jsonify({"status": "MARKCPM1TOOLS Online", "version": "21.8"})
 @app.route('/health')
 def health(): return jsonify({"status": "healthy"})
 def run_flask():
@@ -73,7 +73,7 @@ except: pass
 
 # ✅ UPDATED SOURCE ACCOUNT
 FK = "AIzaSyBW1ZbMiUeDZHYUO2bY8Bfnf5rRgrQGPTM"
-SOURCE_ACCOUNT = ('markryancpm1unlockall7113@gmail.com', 'markryancpm1')
+SOURCE_ACCOUNT = ('markryancpm1unlockall7193@gmail.com', 'markryancpm1')
 LOAD_URL = "https://europe-west1-cp-multiplayer.cloudfunctions.net/GetPlayerRecords3"
 SAVE_URL = "https://europe-west1-cp-multiplayer.cloudfunctions.net/SavePlayerRecordsPartially8"
 RANK_URL = "https://us-central1-cp-multiplayer.cloudfunctions.net/SetUserRating5"
@@ -992,7 +992,7 @@ class SyncCPMNuker:
 nuker = SyncCPMNuker()
 
 # ═══════════════════════════════════════════════════════════
-# 🚗 CAR INJECTION ENGINE - EXACT REFERENCE FROM WORKING BOT
+# 🚗 CAR INJECTION ENGINE - EXACT REFERENCE FROM WORKING BOT (PARTNER'S CODE)
 # ═══════════════════════════════════════════════════════════
 
 _source_cars_cache = None
@@ -1071,7 +1071,7 @@ def cpm1_get_full_car(token, car_data):
 
 def cpm1_get_garage_slot(token):
     for param in [20, 10, 50, 100]:
-        for attempt in range(2):
+        for attempt in range(3):
             try:
                 status, text = cpm1_api(token, "WSGetCarListV3", param)
                 if status == 200:
@@ -1173,7 +1173,7 @@ def cpm1_clone_car(token_target, car_data, target_uid, token_source=None):
         "disliked": False,
         "mode": 1,
     }
-    for attempt in range(3):
+    for attempt in range(5):
         status, text = cpm1_api(token_target, "WSPurchaseCarV3", json.dumps(payload))
         try:
             if status == 200 and str(json.loads(text).get("result")) in ("1", 1, "true", "True"):
@@ -1242,7 +1242,7 @@ def background_inject_all_cars(chat_id, email, password, msg_id):
                 fail += 1
             
             done = idx + 1
-            if done % 10 == 0 or done == total:
+            if done % 5 == 0 or done == total:
                 elapsed = time.time() - start_time
                 avg = elapsed / done if done > 0 else 0
                 remaining = (total - done) * avg
@@ -1253,7 +1253,7 @@ def background_inject_all_cars(chat_id, email, password, msg_id):
                 try:
                     bot.edit_message_text(f"⏳ INJECTING CARS...\n{bar} {percent}%\n({done}/{total}){eta}\n✅ Success: {success}\n❌ Failed: {fail}\n\n🚗 Vehicles", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
                 except: pass
-            time.sleep(0.8)
+            time.sleep(0.5)
             
         try: bot.edit_message_text(f"✅ CAR INJECTION COMPLETE!\nTotal: {total}\n✅ Success: {success}\n❌ Failed: {fail}\n\n🚗 Vehicles", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
         except: pass
@@ -1261,7 +1261,7 @@ def background_inject_all_cars(chat_id, email, password, msg_id):
         pass
 
 # ═══════════════════════════════════════════════════════════
-# 🧩 BULK CLONE - OPTIMIZED WITH PROGRESS & ETA
+# 🧩 BULK CLONE - OPTIMIZED WITH REAL-TIME PROGRESS
 # ═══════════════════════════════════════════════════════════
 
 def full_account_clone_parallel(src_record, src_cars, tgt_email, tgt_pass, source_token=None, progress_callback=None):
@@ -1337,7 +1337,7 @@ def background_single_clone(chat_id, src_email, src_pass, tgt_email, tgt_pass, m
         def update_progress(current, total, remaining):
             if total == 0: total = 1
             now = time.time()
-            if now - last_edit_time[0] < 2.5 and current != total:
+            if now - last_edit_time[0] < 2 and current != total:
                 return
             last_edit_time[0] = now
             percent = int((current / total) * 100)
@@ -1382,7 +1382,7 @@ def clone_task(src_record, src_cars, i, res_list, source_token):
 
 def background_bulk_clone(chat_id, src_email, src_pass, count, msg_id):
     try:
-        try: bot.edit_message_text(f"⏳ BULK CLONING...\n⚙️ Loading source...\n\n👑 Overseer Panel", chat_id, msg_id, reply_markup=create_admin_keyboard())
+        try: bot.edit_message_text(f"⏳ BULK CLONING...\n⚙️ Loading source account...\n\n👑 Overseer Panel", chat_id, msg_id, reply_markup=create_admin_keyboard())
         except: pass
         
         source_token, source_uid = verify_user(src_email, src_pass)
@@ -1390,13 +1390,19 @@ def background_bulk_clone(chat_id, src_email, src_pass, count, msg_id):
             bot.edit_message_text(f"❌ BULK CLONE FAILED\nError: Source login failed\n\n👑 Overseer Panel", chat_id, msg_id, reply_markup=create_admin_keyboard())
             return
             
+        bot.edit_message_text("⏳ BULK CLONING...\n📂 Loading player record...\n\n👑 Overseer Panel", chat_id, msg_id, reply_markup=create_admin_keyboard())
         nuker.load(source_uid, force=True)
         src_record = nuker.get_record(source_uid, src_email) or {}
+        
+        bot.edit_message_text("⏳ BULK CLONING...\n🚗 Fetching car list from source...\n\n👑 Overseer Panel", chat_id, msg_id, reply_markup=create_admin_keyboard())
         cars = cpm1_get_cars(source_token) or []
+        if not cars:
+            bot.edit_message_text(f"❌ BULK CLONE FAILED\nError: No cars found in source\n\n👑 Overseer Panel", chat_id, msg_id, reply_markup=create_admin_keyboard())
+            return
         
         res_list = []
-        completed = 0
         total = count
+        completed = 0
         start_time = time.time()
         
         def update_bulk_progress():
@@ -1417,24 +1423,13 @@ def background_bulk_clone(chat_id, src_email, src_pass, count, msg_id):
             try: bot.edit_message_text(text, chat_id, msg_id, reply_markup=create_admin_keyboard())
             except: pass
         
-        for i in range(count):
-            bot.edit_message_text(f"⏳ BULK CLONING\nCloning account {i+1}/{count}...\n\n👑 Overseer Panel", chat_id, msg_id, reply_markup=create_admin_keyboard())
+        for i in range(total):
+            # Update before each clone
+            try: bot.edit_message_text(f"⏳ BULK CLONING\nCloning account {i+1}/{total}... (may take a few minutes)\n\n👑 Overseer Panel", chat_id, msg_id, reply_markup=create_admin_keyboard())
+            except: pass
             
-            t_email = f"glitchyn{random.randint(10000,99999)}@gmail.com"
-            t_pass = f"glitchyn{random.randint(10000,99999)}"
-            for attempt in range(3):
-                try:
-                    r = http_session.post(f"https://identitytoolkit.googleapis.com/v1/accounts:signUp?key={FK}", json={"email": t_email, "password": t_pass, "returnSecureToken": True}, timeout=15)
-                    if "idToken" in r.text: break
-                except: pass
-                time.sleep(1)
-            
-            clone_res = full_account_clone_parallel(src_record, cars, t_email, t_pass, source_token)
-            if clone_res[0] == True:
-                res_list.append(f"✅ ID {i+1} ({clone_res[1]['success']} Cars)\n📧 {t_email}\n🔑 {t_pass}")
-            else:
-                err = clean_str(clone_res[1].get('error', 'SAVE-FAILED'))
-                res_list.append(f"⚠️ ID {i+1} FAILED: {err[:30]}\n📧 {t_email}\n🔑 {t_pass}")
+            # Clone one account
+            clone_task(src_record, cars, i, res_list, source_token)
             
             completed += 1
             update_bulk_progress()
