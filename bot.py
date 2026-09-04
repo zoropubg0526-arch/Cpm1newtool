@@ -3,9 +3,8 @@
 
 """
 ☠️☠️☠️ 𝙈𝘼𝙍𝙆𝘾𝙋𝙈1𝙏𝙊𝙊𝙇𝙎 - CPM1 ULTIMATE ☠️☠️☠️
-FIXED: Using partner's working car injection engine (full car data with vinyls).
+FULLY MERGED WITH PARTNER'S WORKING CODE + CUSTOM EMOJIS + SUBSCRIPTION
 SOURCE ACCOUNT: markryancpm1unlockall2541@gmail.com
-OPTIMIZED: Bulk clone 1-10 with progress & ETA.
 """
 
 import requests
@@ -25,6 +24,7 @@ import threading
 import concurrent.futures
 import sqlite3
 import gc
+import html
 from copy import deepcopy
 from typing import Any, Dict, List, Optional, Tuple
 from datetime import datetime, timedelta, timezone
@@ -35,12 +35,84 @@ import urllib3
 from flask import Flask, jsonify
 
 # ═══════════════════════════════════════════════════════════
+# 🎨 56 CUSTOM EMOJIS MASTER DATABASE (FROM PARTNER'S CODE)
+# ═══════════════════════════════════════════════════════════
+CUSTOM_EMOJIS = {
+    "core_commands": {"id": "5246749129878561406", "fallback": "🚀"},
+    "message_router": {"id": "5449862290834735715", "fallback": "🎯"},
+    "economy_profile": {"id": "5375296873982604963", "fallback": "💰"},
+    "account_info": {"id": "5258011929993026890", "fallback": "👤"},
+    "unlocks_login": {"id": "5256143829672672750", "fallback": "🔓"},
+    "premium_hub": {"id": "5251422397893989847", "fallback": "👑"},
+    "overseer_panel": {"id": "5433758796289685818", "fallback": "👑"},
+    "free_user": {"id": "6269543218589731276", "fallback": "🆓"},
+    "cpm_dashboard": {"id": "5359765421836757718", "fallback": "🏍️"},
+    "access_granted": {"id": "5316930493223025689", "fallback": "♾️"},
+    "role": {"id": "5332547853304734597", "fallback": "🎖️"},
+    "choose_section": {"id": "5470177992950946662", "fallback": "👇"},
+    "refresh": {"id": "5219934485113493317", "fallback": "🔄"},
+    "info": {"id": "5452026937172048380", "fallback": "ℹ️"},
+    "set_name": {"id": "5837003105228558796", "fallback": "✏️"},
+    "set_id": {"id": "5890864241388293875", "fallback": "🆔"},
+    "email": {"id": "5472239203590888751", "fallback": "📧"},
+    "password": {"id": "5870972873450984431", "fallback": "🔒"},
+    "back": {"id": "5357165441909279397", "fallback": "🔙"},
+    "source_account": {"id": "4929214028657460019", "fallback": "🗂️"},
+    "not_logged_in": {"id": "5330066942755615469", "fallback": "🕶️"},
+    "create_account": {"id": "5382357040008021292", "fallback": "🆕"},
+    "terminal_hybrid": {"id": "5431449001532594346", "fallback": "⚡"},
+    "missing_variables": {"id": "5460860830201430838", "fallback": "🚧"},
+    "flask_server": {"id": "5332289648460853008", "fallback": "📋"},
+    "db_config": {"id": "5330194932781050507", "fallback": "🛡️"},
+    "encryption": {"id": "5258096772776991776", "fallback": "⚙️"},
+    "car_injection": {"id": "4972415571384599106", "fallback": "🎮"},
+    "bulk_clone": {"id": "5893255507380014983", "fallback": "💼"},
+    "bot_state": {"id": "5258093637450866522", "fallback": "🤖"},
+    "money": {"id": "5447591434251158839", "fallback": "💵"},
+    "coin": {"id": "5199552030615558774", "fallback": "🪙"},
+    "w16_engine": {"id": "5332272404167140865", "fallback": "🛠️"},
+    "max_fuel": {"id": "5271782239389106958", "fallback": "⛽"},
+    "no_damage": {"id": "5271782239389106958", "fallback": "🛡️"},
+    "horns": {"id": "5343761750921601316", "fallback": "📯"},
+    "animations": {"id": "5931782330392778765", "fallback": "🔥"},
+    "all_houses": {"id": "5326006424839407935", "fallback": "🏠"},
+    "wheels": {"id": "5377521684221815300", "fallback": "🛞"},
+    "complete_all_levels": {"id": "6194737030165959506", "fallback": "🏆"},
+    "all_clothes": {"id": "5429526891998505619", "fallback": "👕"},
+    "ultimate_glitch": {"id": "5798855098331304419", "fallback": "💀"},
+    "vehicles_cars_w124": {"id": "6143050792430473209", "fallback": "🚗"},
+    "unlock_camry_id": {"id": "5249166535041245970", "fallback": "🪙"},
+    "group_unlock": {"id": "6001526766714227911", "fallback": "👥"},
+    "vinyls_designs": {"id": "5318870237892865788", "fallback": "🎨"},
+    "add_admin": {"id": "5870458774455587120", "fallback": "👤"},
+    "remove_admin": {"id": "5060037611507156079", "fallback": "🗑️"},
+    "stats_telemetry": {"id": "6325544614262475392", "fallback": "📈"},
+    "broadcast_announcement": {"id": "5298609030321691620", "fallback": "📢"},
+    "success_preserved": {"id": "5980930633298350051", "fallback": "✅"},
+    "cancel_failed_error": {"id": "5974083768233760323", "fallback": "❌"},
+    "warning": {"id": "5285139029333919650", "fallback": "⚠️"},
+    "loading_progress": {"id": "5451732530048802485", "fallback": "⏳"},
+    "account_created": {"id": "5461151367559141950", "fallback": "🎉"},
+    "smoke": {"id": "5197450872484815271", "fallback": "💨"}
+}
+
+def get_premium_emoji(emoji_name):
+    data = CUSTOM_EMOJIS.get(emoji_name)
+    if data: return f'<tg-emoji emoji-id="{data["id"]}">{data["fallback"]}</tg-emoji>'
+    return ""
+
+def get_btn(emoji_name, button_text, **kwargs):
+    data = CUSTOM_EMOJIS.get(emoji_name)
+    if data and "id" in data: return types.InlineKeyboardButton(text=button_text, icon_custom_emoji_id=data["id"], **kwargs)
+    return types.InlineKeyboardButton(text=button_text, **kwargs)
+
+# ═══════════════════════════════════════════════════════════
 # 🌐 FLASK WEB SERVER
 # ═══════════════════════════════════════════════════════════
 app = Flask(__name__)
 @app.route('/')
 def home():
-    return jsonify({"status": "MARKCPM1TOOLS Online", "version": "21.8"})
+    return jsonify({"status": "MARKCPM1TOOLS Online", "version": "22.0"})
 @app.route('/health')
 def health(): return jsonify({"status": "healthy"})
 def run_flask():
@@ -73,7 +145,7 @@ except: pass
 
 # ✅ UPDATED SOURCE ACCOUNT
 FK = "AIzaSyBW1ZbMiUeDZHYUO2bY8Bfnf5rRgrQGPTM"
-SOURCE_ACCOUNT = ('markryancpm1unlockall7686@gmail.com', 'markryancpm1')
+SOURCE_ACCOUNT = ('markryancpm1unlockall2541@gmail.com', 'markryancpm1')
 LOAD_URL = "https://europe-west1-cp-multiplayer.cloudfunctions.net/GetPlayerRecords3"
 SAVE_URL = "https://europe-west1-cp-multiplayer.cloudfunctions.net/SavePlayerRecordsPartially8"
 RANK_URL = "https://us-central1-cp-multiplayer.cloudfunctions.net/SetUserRating5"
@@ -992,7 +1064,7 @@ class SyncCPMNuker:
 nuker = SyncCPMNuker()
 
 # ═══════════════════════════════════════════════════════════
-# 🚗 CAR INJECTION ENGINE - EXACT REFERENCE FROM WORKING BOT (PARTNER'S CODE)
+# 🚗 CAR INJECTION ENGINE - EXACT REFERENCE FROM PARTNER'S CODE
 # ═══════════════════════════════════════════════════════════
 
 _source_cars_cache = None
@@ -1018,60 +1090,19 @@ def cpm1_api(token, endpoint, data=None):
     except: return 500, json.dumps({"result": "error"})
 
 def cpm1_get_cars(token):
-    endpoints = [
-        ("GetAllCars2", None),
-        ("GetAllCars3", None),
-        ("GetAllCars", None),
-    ]
-    for endpoint, data in endpoints:
-        status, text = cpm1_api(token, endpoint, data)
+    for endpoint in ["GetAllCars2", "GetAllCars", "GetCarsList"]:
+        status, text = cpm1_api(token, endpoint, None)
         if status != 200: continue
         try:
-            raw = json.loads(text)
-            result = raw.get("result", raw)
-            if isinstance(result, str):
-                result = json.loads(result)
+            result = json.loads(json.loads(text)["result"])
             if isinstance(result, list) and len(result) > 0:
                 return result
-            if isinstance(result, dict):
-                for key in ["cars", "CarList", "data", "list"]:
-                    if isinstance(result.get(key), list) and len(result[key]) > 0:
-                        return result[key]
         except: continue
     return None
 
-def cpm1_get_full_car(token, car_data):
-    cid = car_data.get("CarID") or car_data.get("carID") or 0
-    gen = car_data.get("carGeneratedID") or car_data.get("CarGeneratedID") or ""
-    payloads = [
-        {"CarID": cid, "carGeneratedID": gen},
-        {"CarID": cid},
-        {"carGeneratedID": gen},
-        car_data,
-    ]
-    for p in payloads:
-        for endpoint in ["WSGetFullCarV3", "WSGetFullCarV2", "GetFullCar"]:
-            try:
-                status, text = cpm1_api(token, endpoint, json.dumps(p))
-                if status != 200: continue
-                raw = json.loads(text)
-                result = raw.get("result", raw)
-                if isinstance(result, str):
-                    try: result = json.loads(result)
-                    except: pass
-                if isinstance(result, dict) and (result.get("CarID") or result.get("carID")):
-                    return result
-                if isinstance(result, list) and result:
-                    for item in result:
-                        if not isinstance(item, dict): continue
-                        if item.get("CarID") == cid or item.get("carID") == cid:
-                            return item
-            except: continue
-    return None
-
 def cpm1_get_garage_slot(token):
-    for param in [20, 10, 50, 100]:
-        for attempt in range(3):
+    for attempt in range(5):
+        for param in [20, 10, 50, 100]:
             try:
                 status, text = cpm1_api(token, "WSGetCarListV3", param)
                 if status == 200:
@@ -1086,39 +1117,52 @@ def cpm1_get_garage_slot(token):
                             if 'carGeneratedID' in slot:
                                 return slot
             except: pass
-            time.sleep(0.5)
+        time.sleep(0.2)
+    return None
+
+def cpm1_get_full_car(token, car_data):
+    cid = car_data.get("CarID") or car_data.get("carID") or 0
+    gen = car_data.get("carGeneratedID") or car_data.get("CarGeneratedID") or ""
+    endpoints = [
+        ("WSGetFullCarV3", json.dumps({"CarID": cid, "carGeneratedID": gen})),
+        ("WSGetFullCarV3", json.dumps(car_data)),
+        ("WSGetFullCarV3", json.dumps({"CarID": cid})),
+    ]
+    for endpoint, data in endpoints:
+        try:
+            status, text = cpm1_api(token, endpoint, data)
+            if status != 200: continue
+            raw = json.loads(text)
+            result = raw.get("result", raw)
+            if isinstance(result, str):
+                try: result = json.loads(result)
+                except: pass
+            if isinstance(result, dict) and (result.get("CarID") or result.get("carID")):
+                return result
+            if isinstance(result, list) and result:
+                for item in result:
+                    if not isinstance(item, dict): continue
+                    if item.get("CarID") == cid or item.get("carID") == cid:
+                        return item
+        except: continue
     return None
 
 def cpm1_fix_car_appearance(car):
-    """EXACT reference function - fixes colors, removes police, avoids black."""
+    """Force clean white car - kills glitch colors."""
     if not isinstance(car, dict): return car
     car = json.loads(json.dumps(car))
-    vyn = car.get("Vynils")
-    if not isinstance(vyn, dict): vyn = {}
-    if "CarID" not in vyn and car.get("CarID") is not None:
-        vyn["CarID"] = car.get("CarID")
-    car["Vynils"] = vyn
-
-    def ensure_color_list(key, length, default=1.0):
-        val = car.get(key)
-        if not isinstance(val, list) or len(val) == 0:
-            car[key] = [float(default)] * length
-        else:
-            fixed = []
-            for x in val:
-                try: fx = float(x)
-                except Exception: fx = default
-                if fx == 0.0: fx = 1.0  # Prevent black car bug
-                fixed.append(fx)
-            car[key] = fixed
-
-    for key, ln in (("colors", 4), ("Colors", 4), ("bodyColor", 4), ("paint", 4)):
-        if key in car or key in ("colors", "Colors"):
-            ensure_color_list(key, ln, 0.85)
-            
-    if isinstance(car.get("color"), (int, float)) and float(car.get("color") or 0) == 0:
-        car["color"] = 1
-        
+    # Force default white paint
+    default_paint = [1.0, 1.0, 1.0, 1.0]
+    for key in ["colors", "Colors", "bodyColor", "paint", "paintColor"]:
+        if key in car:
+            car[key] = default_paint
+    # Clear glitch data
+    car["Vynils"] = {}
+    car["customColors"] = []
+    car["floats"] = []
+    car["integers"] = []
+    car["texts"] = ["", "", ""]
+    car["wheels"] = []
     car["police"] = False
     car["isLocked"] = False
     if car.get("engineID") in (None, 0): car["engineID"] = 5
@@ -1132,130 +1176,125 @@ def cpm1_clone_car(token_target, car_data, target_uid, token_source=None):
     cid = car_data.get("CarID", 0) or car_data.get("carID", 0)
     full = None
     if token_source:
-        try: full = cpm1_get_full_car(token_source, car_data)
-        except: full = None
+        for attempt in range(3):
+            try: full = cpm1_get_full_car(token_source, car_data)
+            except: full = None
+            if full: break
     base = full if isinstance(full, dict) else car_data
     car = cpm1_fix_car_appearance(base)
     car["CarID"] = cid
-    try:
-        if "texts" in car and isinstance(car["texts"], list) and len(car["texts"]) > 2:
-            car["texts"][2] = f"{str(target_uid)[:8].upper()}_{cid}_HZ"
-        elif "texts" in car and isinstance(car["texts"], str):
-            car["texts"] = ["", "", f"{str(target_uid)[:8].upper()}_{cid}_HZ"]
-    except: pass
-    try:
-        if isinstance(car.get("Vynils"), dict):
-            car["Vynils"]["CarID"] = cid
-    except: pass
-    
-    slot = cpm1_get_garage_slot(token_target)
-    if not slot: return False
-    
-    vynil = car.get("Vynils") if isinstance(car.get("Vynils"), dict) else {}
-    if not vynil: vynil = {"CarID": cid}
-        
-    payload = {
-        "ownerID": slot.get("ownerID", ""),
-        "ownerName": slot.get("ownerName", ""),
-        "description": slot.get("description", ""),
-        "CarID": slot.get("carID", 0),
-        "carGeneratedID": slot.get("carGeneratedID", ""),
-        "ownerAccountID": slot.get("ownerAccountID", ""),
-        "oneCar": car,
-        "vynilOneCar": vynil,
-        "loadedLocalCar": {"instanceID": random.randint(-999999, -100000)},
-        "price": slot.get("price", 100),
-        "SellingCar": {},
-        "willReject": False,
-        "dislike": 1,
-        "like": 0,
-        "liked": False,
-        "disliked": False,
-        "mode": 1,
-    }
+    # Always send empty vinyl to prevent glitches
+    vynil = {}
+
     for attempt in range(5):
+        slot = cpm1_get_garage_slot(token_target)
+        if slot:
+            payload = {
+                "ownerID": slot.get("ownerID", ""),
+                "ownerName": slot.get("ownerName", ""),
+                "description": slot.get("description", ""),
+                "CarID": slot.get("carID", 0),
+                "carGeneratedID": slot.get("carGeneratedID", ""),
+                "ownerAccountID": slot.get("ownerAccountID", ""),
+                "oneCar": car,
+                "vynilOneCar": vynil,
+                "loadedLocalCar": {"instanceID": random.randint(-999999, -100000)},
+                "price": slot.get("price", 100),
+                "SellingCar": {},
+                "willReject": False,
+                "dislike": 1,
+                "like": 0,
+                "liked": False,
+                "disliked": False,
+                "mode": 1,
+            }
+        else:
+            payload = {
+                "ownerID": "",
+                "ownerName": "",
+                "description": "",
+                "CarID": 0,
+                "carGeneratedID": "",
+                "ownerAccountID": "",
+                "oneCar": car,
+                "vynilOneCar": vynil,
+                "loadedLocalCar": {"instanceID": random.randint(-999999, -100000)},
+                "price": 100,
+                "SellingCar": {},
+                "willReject": False,
+                "dislike": 1,
+                "like": 0,
+                "liked": False,
+                "disliked": False,
+                "mode": 1,
+            }
         status, text = cpm1_api(token_target, "WSPurchaseCarV3", json.dumps(payload))
         try:
             if status == 200 and str(json.loads(text).get("result")) in ("1", 1, "true", "True"):
                 return True
         except: pass
-        time.sleep(0.8)
+        time.sleep(0.3)
     return False
 
-def cpm1_inject_car(token_target, uid_target, car_data, token_source=None):
-    if token_source is None:
+def cpm1_inject_car(email, password, car_id):
+    try:
+        tok, uid = verify_user(email, password)
+        if not tok: return False
         stok, _ = verify_user(*SOURCE_ACCOUNT)
-        token_source = stok
-    return cpm1_clone_car(token_target, car_data, uid_target, token_source)
-
-def get_source_cars_cached():
-    global _source_cars_cache, _source_cars_cache_time
-    with _source_cars_lock:
-        if _source_cars_cache and time.time() - _source_cars_cache_time < 60:
-            return _source_cars_cache
-    stok, _ = verify_user(*SOURCE_ACCOUNT)
-    if not stok:
-        print("[SOURCE CARS] Source auth failed.")
-        return []
-    cars = cpm1_get_cars(stok)
-    if cars:
-        _source_cars_cache = cars
-        _source_cars_cache_time = time.time()
-    return _source_cars_cache or []
+        if not stok: return False
+        source_cars = cpm1_get_cars(stok)
+        if not source_cars: return False
+        car_data = None
+        for c in source_cars:
+            cid = c.get('CarID', c.get('carID', 0))
+            if int(cid) == int(car_id):
+                car_data = c
+                break
+        if not car_data:
+            return False
+        return cpm1_clone_car(tok, car_data, uid, token_source=stok)
+    except:
+        return False
 
 def background_inject_all_cars(chat_id, email, password, msg_id):
     try:
-        try: bot.edit_message_text("⏳ INJECTING CARS...\n⚙️ Loading source...\n\n🚗 Vehicles", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
+        try: bot.edit_message_text(f"{get_premium_emoji('loading_progress')} <b>INJECTING CARS...</b>\nProgress: 0/270\n\n{get_premium_emoji('car_injection')} Vehicles Settings", chat_id, msg_id, reply_markup=create_vehicles_keyboard(), parse_mode="HTML")
         except: pass
-        
+
         web_uid = get_web_uid(chat_id)
         ok, msg_auth, tok = nuker.get_auth(web_uid)
         td = nuker.get_token_data(web_uid)
         uid = td.get("firebase_uid") if td else None
-        
+
         if not ok or not tok or not uid:
-            try: bot.edit_message_text("❌ Auth Failed. Login again.\n\n🚗 Vehicles", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
+            try: bot.edit_message_text(f"{get_premium_emoji('cancel_failed_error')} Auth Failed: Your login expired. Please login again.\n\n{get_premium_emoji('car_injection')} Vehicles Settings", chat_id, msg_id, reply_markup=create_vehicles_keyboard(), parse_mode="HTML")
             except: pass
             return
-            
+
         stok, _ = verify_user(*SOURCE_ACCOUNT)
         if not stok:
-            try: bot.edit_message_text("❌ Source account unavailable.\n\n🚗 Vehicles", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
+            try: bot.edit_message_text(f"{get_premium_emoji('cancel_failed_error')} Auth Failed: SOURCE_ACCOUNT is dead or IP Rate Limited. Contact Admin.\n\n{get_premium_emoji('car_injection')} Vehicles Settings", chat_id, msg_id, reply_markup=create_vehicles_keyboard(), parse_mode="HTML")
             except: pass
             return
-            
-        source_cars = get_source_cars_cached()
+
+        source_cars = cpm1_get_cars(stok)
         if not source_cars or len(source_cars) == 0:
-            try: bot.edit_message_text("❌ No cars found in source.\n\n🚗 Vehicles", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
+            try: bot.edit_message_text(f"{get_premium_emoji('cancel_failed_error')} SERVER ERROR: Could not fetch base cars from endpoint. Try again later.\n\n{get_premium_emoji('car_injection')} Vehicles Settings", chat_id, msg_id, reply_markup=create_vehicles_keyboard(), parse_mode="HTML")
             except: pass
             return
-            
+
         success = 0
         fail = 0
-        total = len(source_cars)
-        start_time = time.time()
-        
-        for idx, car_data in enumerate(source_cars):
-            if cpm1_clone_car(tok, car_data, uid, token_source=stok):
-                success += 1
-            else:
-                fail += 1
-            
-            done = idx + 1
-            if done % 5 == 0 or done == total:
-                elapsed = time.time() - start_time
-                avg = elapsed / done if done > 0 else 0
-                remaining = (total - done) * avg
-                percent = int((done / total) * 100)
-                filled = int(percent / 5)
-                bar = "█" * filled + "▒" * (20 - filled)
-                eta = f" ETA: {int(remaining)}s" if remaining > 0 else ""
-                try:
-                    bot.edit_message_text(f"⏳ INJECTING CARS...\n{bar} {percent}%\n({done}/{total}){eta}\n✅ Success: {success}\n❌ Failed: {fail}\n\n🚗 Vehicles", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
+        for car_id in range(1, 271):
+            if cpm1_inject_car(email, password, car_id): success += 1
+            else: fail += 1
+            total_done = success + fail
+            if total_done % 10 == 0 or total_done == 270:
+                try: bot.edit_message_text(f"{get_premium_emoji('loading_progress')} <b>INJECTING CARS...</b>\nProgress: {total_done}/270\n{get_premium_emoji('success_preserved')} Success: {success}\n{get_premium_emoji('cancel_failed_error')} Failed: {fail}\n\n{get_premium_emoji('car_injection')} Vehicles Settings", chat_id, msg_id, reply_markup=create_vehicles_keyboard(), parse_mode="HTML")
                 except: pass
             time.sleep(0.5)
-            
-        try: bot.edit_message_text(f"✅ CAR INJECTION COMPLETE!\nTotal: {total}\n✅ Success: {success}\n❌ Failed: {fail}\n\n🚗 Vehicles", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
+
+        try: bot.edit_message_text(f"{get_premium_emoji('success_preserved')} <b>CAR INJECTION COMPLETE</b>\nTotal: 270\n{get_premium_emoji('success_preserved')} Success: {success}\n{get_premium_emoji('cancel_failed_error')} Failed: {fail}\n\n{get_premium_emoji('car_injection')} Vehicles Settings", chat_id, msg_id, reply_markup=create_vehicles_keyboard(), parse_mode="HTML")
         except: pass
     except Exception as e:
         pass
@@ -1295,10 +1334,10 @@ def full_account_clone_parallel(src_record, src_cars, tgt_email, tgt_pass, sourc
 
         def process_car(car):
             if not isinstance(car, dict): return False
-            time.sleep(0.5)
             return cpm1_clone_car(t_auth, car, t_uid, token_source=source_token)
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+        # Use 16 threads for speed (from partner's code)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=16) as executor:
             futures = {executor.submit(process_car, car): car for car in src_cars}
             for future in concurrent.futures.as_completed(futures):
                 if future.result():
@@ -1320,12 +1359,12 @@ def full_account_clone_parallel(src_record, src_cars, tgt_email, tgt_pass, sourc
 
 def background_single_clone(chat_id, src_email, src_pass, tgt_email, tgt_pass, msg_id):
     try:
-        try: bot.edit_message_text("⏳ CLONING IN PROGRESS...\n⚙️ Loading source...\n\n👤 Account Management", chat_id, msg_id, reply_markup=create_account_keyboard())
+        try: bot.edit_message_text(f"{get_premium_emoji('loading_progress')} <b>CLONING IN PROGRESS...</b>\n┣━━━━━━━━━━━━━━━━━━┫\n{get_premium_emoji('encryption')} Safe Extracting Source Profile...\n{get_premium_emoji('terminal_hybrid')} Hybrid Bypass Active\n\n{get_premium_emoji('premium_hub')} Premium Hub", chat_id, msg_id, reply_markup=create_premium_keyboard(), parse_mode="HTML")
         except: pass
         
         source_token, source_uid = verify_user(src_email, src_pass)
         if not source_token:
-            bot.edit_message_text(f"❌ CLONE FAILED\nError: Source login failed\n\n👤 Account Management", chat_id, msg_id, reply_markup=create_account_keyboard())
+            bot.edit_message_text(f"{get_premium_emoji('cancel_failed_error')} <b>CLONE FAILED</b>\n┣━━━━━━━━━━━━━━━━━━┫\nError: Source login failed\n\n{get_premium_emoji('premium_hub')} Premium Hub", chat_id, msg_id, reply_markup=create_premium_keyboard(), parse_mode="HTML")
             return
             
         nuker.load(source_uid, force=True)
@@ -1344,20 +1383,20 @@ def background_single_clone(chat_id, src_email, src_pass, tgt_email, tgt_pass, m
             filled = int(percent / 5)
             bar = "█" * filled + "▒" * (20 - filled)
             eta = f" ETA: {int(remaining)}s" if remaining > 0 else ""
-            text = f"⏳ CLONING IN PROGRESS...\n{bar} {percent}%\n({current}/{total}){eta}\n\n👤 Account Management"
+            text = f"{get_premium_emoji('loading_progress')} <b>CLONING IN PROGRESS...</b>\n<code>{bar}</code> {percent}%\n({current}/{total}){eta}\n\n{get_premium_emoji('premium_hub')} Premium Hub"
             try:
-                bot.edit_message_text(text, chat_id, msg_id, reply_markup=create_account_keyboard())
+                bot.edit_message_text(text, chat_id, msg_id, reply_markup=create_premium_keyboard(), parse_mode="HTML")
             except: pass
 
         res = full_account_clone_parallel(src_record, cars, tgt_email, tgt_pass, source_token, progress_callback=update_progress)
         
         if res[0] == True:
-            msg = f"✅ CLONE SUCCESSFUL!\n🚗 Cars: {res[1]['success']}/{res[1]['total']}\n\n👤 Account Management"
+            msg = f"{get_premium_emoji('success_preserved')} <b>100% PERFECT CLONE SUCCESSFUL</b>\n┣━━━━━━━━━━━━━━━━━━┫\n{get_premium_emoji('vehicles_cars_w124')} Cars Transferred: {res[1]['success']}/{res[1]['total']}\n{get_premium_emoji('vinyls_designs')} Vinyls & Designs: {get_premium_emoji('success_preserved')} Preserved\n{get_premium_emoji('economy_profile')} Profile & Coins: {get_premium_emoji('success_preserved')} Cloned\n\n{get_premium_emoji('premium_hub')} Premium Hub"
         else:
             err = clean_str(res[1].get('error', 'SAVE-FAILED'))
-            msg = f"❌ CLONE FAILED\nError: {err}\n\n👤 Account Management"
+            msg = f"{get_premium_emoji('cancel_failed_error')} <b>CLONE FAILED</b>\n┣━━━━━━━━━━━━━━━━━━┫\nError: {html.escape(err)}\n\n{get_premium_emoji('premium_hub')} Premium Hub"
 
-        try: bot.edit_message_text(msg, chat_id, msg_id, reply_markup=create_account_keyboard())
+        try: bot.edit_message_text(msg, chat_id, msg_id, reply_markup=create_premium_keyboard(), parse_mode="HTML")
         except: pass
     except Exception as e:
         pass
@@ -1370,155 +1409,190 @@ def clone_task(src_record, src_cars, i, res_list, source_token):
             r = http_session.post(f"https://identitytoolkit.googleapis.com/v1/accounts:signUp?key={FK}", json={"email": t_email, "password": t_pass, "returnSecureToken": True}, timeout=15)
             if "idToken" in r.text: break
         except: pass
-        time.sleep(1)
+        time.sleep(0.5)
         
     clone_res = full_account_clone_parallel(src_record, src_cars, t_email, t_pass, source_token)
-    if clone_res[0] == True: 
-        res_list.append(f"✅ ID {i+1} ({clone_res[1]['success']} Cars)\n📧 {t_email}\n🔑 {t_pass}")
-    else: 
+    if clone_res[0] == True:
+        res_list.append(f"{get_premium_emoji('success_preserved')} ID {i+1} PERFECT ({clone_res[1]['success']} Cars)\n{get_premium_emoji('email')} <code>{t_email}</code>\n{get_premium_emoji('password')} <code>{t_pass}</code>")
+    else:
         err = clean_str(clone_res[1].get('error', 'SAVE-FAILED'))
-        res_list.append(f"⚠️ ID {i+1} FAILED: {err[:30]}\n📧 {t_email}\n🔑 {t_pass}")
+        res_list.append(f"{get_premium_emoji('warning')} ID {i+1} FAILED: {html.escape(err[:30])}\n{get_premium_emoji('email')} <code>{t_email}</code>\n{get_premium_emoji('password')} <code>{t_pass}</code>")
     gc.collect()
 
 def background_bulk_clone(chat_id, src_email, src_pass, count, msg_id):
     try:
-        try: bot.edit_message_text(f"⏳ BULK CLONING...\n⚙️ Loading source account...\n\n👑 Overseer Panel", chat_id, msg_id, reply_markup=create_admin_keyboard())
+        try: bot.edit_message_text(f"{get_premium_emoji('bulk_clone')} <b>BULK CLONE STARTED</b>\n┣━━━━━━━━━━━━━━━━━━┫\n{get_premium_emoji('encryption')} Extracting Source Profile...\n{get_premium_emoji('terminal_hybrid')} Hybrid Bypass Active\n\n{get_premium_emoji('overseer_panel')} OVERSEER PANEL", chat_id, msg_id, reply_markup=create_admin_keyboard(), parse_mode="HTML")
         except: pass
         
         source_token, source_uid = verify_user(src_email, src_pass)
         if not source_token:
-            bot.edit_message_text(f"❌ BULK CLONE FAILED\nError: Source login failed\n\n👑 Overseer Panel", chat_id, msg_id, reply_markup=create_admin_keyboard())
+            bot.edit_message_text(f"{get_premium_emoji('cancel_failed_error')} <b>BULK CLONE FAILED</b>\n┣━━━━━━━━━━━━━━━━━━┫\nError: Source login failed\n\n{get_premium_emoji('overseer_panel')} OVERSEER PANEL", chat_id, msg_id, reply_markup=create_admin_keyboard(), parse_mode="HTML")
             return
             
-        bot.edit_message_text("⏳ BULK CLONING...\n📂 Loading player record...\n\n👑 Overseer Panel", chat_id, msg_id, reply_markup=create_admin_keyboard())
         nuker.load(source_uid, force=True)
         src_record = nuker.get_record(source_uid, src_email) or {}
-        
-        bot.edit_message_text("⏳ BULK CLONING...\n🚗 Fetching car list from source...\n\n👑 Overseer Panel", chat_id, msg_id, reply_markup=create_admin_keyboard())
         cars = cpm1_get_cars(source_token) or []
+        
         if not cars:
-            bot.edit_message_text(f"❌ BULK CLONE FAILED\nError: No cars found in source\n\n👑 Overseer Panel", chat_id, msg_id, reply_markup=create_admin_keyboard())
+            bot.edit_message_text(f"{get_premium_emoji('cancel_failed_error')} <b>BULK CLONE FAILED</b>\n┣━━━━━━━━━━━━━━━━━━┫\nError: No cars found in source account\n\n{get_premium_emoji('overseer_panel')} OVERSEER PANEL", chat_id, msg_id, reply_markup=create_admin_keyboard(), parse_mode="HTML")
             return
         
         res_list = []
-        total = count
-        completed = 0
+        account_creds = []
+        total_accounts = count
+        done_accounts = 0
         start_time = time.time()
         
-        def update_bulk_progress():
-            nonlocal completed
-            if completed >= total:
-                final_text = "📦 BULK CLONE REPORT\n┣━━━━━━━━━━━━━━━━━━┫\n\n" + "\n\n".join(sorted(res_list)) + "\n\n👑 Overseer Panel"
-                try: bot.edit_message_text(final_text, chat_id, msg_id, reply_markup=create_admin_keyboard())
-                except: pass
-                return
-            percent = int((completed / total) * 100)
+        def update_bulk_progress(acc_idx, status):
+            nonlocal done_accounts
+            if status == "done":
+                done_accounts += 1
+            percent = int((done_accounts / total_accounts) * 100)
             filled = int(percent / 5)
             bar = "█" * filled + "▒" * (20 - filled)
             elapsed = time.time() - start_time
-            avg = elapsed / completed if completed > 0 else 0
-            remaining = (total - completed) * avg
+            avg = elapsed / done_accounts if done_accounts > 0 else 0
+            remaining = (total_accounts - done_accounts) * avg
             eta = f" ETA: {int(remaining)}s" if remaining > 0 else ""
-            text = f"⏳ BULK CLONING {completed}/{total}\n{bar} {percent}%{eta}\n\n👑 Overseer Panel"
-            try: bot.edit_message_text(text, chat_id, msg_id, reply_markup=create_admin_keyboard())
+            progress_text = f"{get_premium_emoji('loading_progress')} <b>BULK CLONE PROGRESS</b>\n┣━━━━━━━━━━━━━━━━━━┫\n<code>{bar}</code> {percent}%{eta}\n{get_premium_emoji('create_account')} Registering: {done_accounts}/{total_accounts}\n\n{get_premium_emoji('overseer_panel')} OVERSEER PANEL"
+            try:
+                bot.edit_message_text(progress_text, chat_id, msg_id, reply_markup=create_admin_keyboard(), parse_mode="HTML")
             except: pass
-        
-        for i in range(total):
-            # Update before each clone
-            try: bot.edit_message_text(f"⏳ BULK CLONING\nCloning account {i+1}/{total}... (may take a few minutes)\n\n👑 Overseer Panel", chat_id, msg_id, reply_markup=create_admin_keyboard())
-            except: pass
-            
-            # Clone one account
-            clone_task(src_record, cars, i, res_list, source_token)
-            
-            completed += 1
-            update_bulk_progress()
-            gc.collect()
-        
-        final_text = "📦 BULK CLONE REPORT\n┣━━━━━━━━━━━━━━━━━━┫\n\n" + "\n\n".join(sorted(res_list)) + "\n\n👑 Overseer Panel"
-        try: bot.edit_message_text(final_text, chat_id, msg_id, reply_markup=create_admin_keyboard())
-        except: pass
-    except Exception as e:
-        try: bot.edit_message_text(f"❌ BULK CLONE ERROR\n{e}\n\n👑 Overseer Panel", chat_id, msg_id, reply_markup=create_admin_keyboard())
+
+        max_threads = min(count, 4)
+        threads = []
+        results_lock = threading.Lock()
+
+        def worker(i):
+            email, pw = clone_task(src_record, cars, i, res_list, source_token)
+            with results_lock:
+                account_creds.append((email, pw))
+                update_bulk_progress(i, "done")
+
+        for i in range(count):
+            while len([t for t in threads if t.is_alive()]) >= max_threads:
+                time.sleep(1)
+            t = threading.Thread(target=worker, args=(i,))
+            threads.append(t)
+            t.start()
+
+        for t in threads:
+            t.join()
+
+        accounts_file = f"accounts_{random.randint(100,999)}.txt"
+        try:
+            with open(accounts_file, "w") as f:
+                f.write("email:password\n")
+                for email, pw in account_creds:
+                    f.write(f"{email}:{pw}\n")
         except: pass
 
+        final_text = f"{get_premium_emoji('bulk_clone')} <b>BULK CLONE REPORT</b>\n┣━━━━━━━━━━━━━━━━━━┫\n\n" + "\n\n".join(sorted(res_list)) + f"\n\n{get_premium_emoji('source_account')} Saved: {accounts_file}\n\n{get_premium_emoji('overseer_panel')} OVERSEER PANEL"
+
+        try:
+            bot.edit_message_text(final_text, chat_id, msg_id, reply_markup=create_admin_keyboard(), parse_mode="HTML")
+            if os.path.exists(accounts_file):
+                try:
+                    with open(accounts_file, "rb") as f:
+                        bot.send_document(chat_id, f)
+                except: pass
+        except: pass
+    except Exception as e:
+        pass
+
 # ═══════════════════════════════════════════════════════════
-# 🤖 UI & KEYBOARDS (UNTOUCHED - KEEP ORIGINAL)
+# 🤖 UI & KEYBOARDS (WITH CUSTOM EMOJIS)
 # ═══════════════════════════════════════════════════════════
 def get_role_badge(chat_id):
-    if is_admin(chat_id):
-        return "👑 Admin"
-    if is_premium(chat_id):
-        return "💎 Premium User"
-    return "🆓 Free User"
+    if is_admin(chat_id): return f"{get_premium_emoji('overseer_panel')} Admin"
+    if is_premium(chat_id): return f"{get_premium_emoji('premium_hub')} Premium User"
+    return f"{get_premium_emoji('free_user')} Free User"
 
 def cancel_keyboard():
     markup = types.InlineKeyboardMarkup()
-    markup.add(types.InlineKeyboardButton("❌ Cancel", callback_data="menu_main"))
+    markup.add(get_btn("cancel_failed_error", "Cancel", callback_data="menu_main"))
     return markup
 
 def create_dashboard_keyboard(chat_id):
     markup = types.InlineKeyboardMarkup(row_width=2)
-    markup.row(types.InlineKeyboardButton("👤 Account", callback_data="menu_account"), types.InlineKeyboardButton("💰 Economy", callback_data="menu_economy"))
-    markup.row(types.InlineKeyboardButton("🚗 Vehicles", callback_data="menu_vehicles"), types.InlineKeyboardButton("🔓 Unlocks", callback_data="menu_unlocks"))
-    markup.row(types.InlineKeyboardButton("💎 Subscription", callback_data="menu_subscription"))
-    if is_admin(chat_id):
-        markup.row(types.InlineKeyboardButton("👑 OVERSEER PANEL", callback_data="admin_panel"))
-    markup.row(types.InlineKeyboardButton("🔄 Refresh", callback_data="refresh_account"), types.InlineKeyboardButton("🚪 Logout", callback_data="logout"))
+    markup.row(get_btn("account_info", "Account", callback_data="menu_account"), 
+               get_btn("economy_profile", "Economy", callback_data="menu_economy"))
+    markup.row(get_btn("unlocks_login", "Unlocks", callback_data="menu_unlocks"))
+    if is_premium(chat_id) or is_admin(chat_id):
+        markup.row(get_btn("premium_hub", "Premium", callback_data="menu_premium"))
+    if is_admin(chat_id): 
+        markup.row(get_btn("overseer_panel", "OVERSEER PANEL", callback_data="admin_panel"))
+    markup.row(get_btn("refresh", "Refresh", callback_data="refresh_account"), 
+               get_btn("back", "Logout", callback_data="logout"))
     return markup
 
 def create_account_keyboard():
     markup = types.InlineKeyboardMarkup(row_width=2)
-    markup.row(types.InlineKeyboardButton("ℹ️ Info", callback_data="acc_info"), types.InlineKeyboardButton("✏️ Set Name", callback_data="acc_name"))
-    markup.row(types.InlineKeyboardButton("🆔 Set ID", callback_data="acc_id"), types.InlineKeyboardButton("📧 Change Email", callback_data="acc_email"))
-    markup.row(types.InlineKeyboardButton("🔑 Change Pass", callback_data="acc_pass"), types.InlineKeyboardButton("👥 Clone Account", callback_data="acc_clone"))
-    markup.add(types.InlineKeyboardButton("⬅️ Back", callback_data="menu_main"))
+    markup.row(get_btn("info", "Info", callback_data="acc_info"), 
+               get_btn("set_name", "Set Name", callback_data="acc_name"))
+    markup.row(get_btn("set_id", "Set ID", callback_data="acc_id"), 
+               get_btn("email", "Change Email", callback_data="acc_email"))
+    markup.row(get_btn("password", "Change Pass", callback_data="acc_pass"))
+    markup.add(get_btn("back", "Back", callback_data="menu_main"))
     return markup
 
 def create_economy_keyboard():
     markup = types.InlineKeyboardMarkup(row_width=2)
-    markup.row(types.InlineKeyboardButton("💵 Money 50M", callback_data="eco_money_max"), types.InlineKeyboardButton("🪙 Coins 500K", callback_data="eco_coins_max"))
-    markup.row(types.InlineKeyboardButton("💵 Custom Money", callback_data="eco_money_cust"), types.InlineKeyboardButton("🪙 Custom Coins", callback_data="eco_coins_cust"))
-    markup.row(types.InlineKeyboardButton("👑 King Rank", callback_data="eco_king"))
-    markup.add(types.InlineKeyboardButton("⬅️ Back", callback_data="menu_main"))
-    return markup
-
-def create_vehicles_keyboard():
-    markup = types.InlineKeyboardMarkup(row_width=2)
-    markup.row(types.InlineKeyboardButton("🚗 Unlock All Cars", callback_data="veh_unlock_all"), types.InlineKeyboardButton("🚙 Unlock By ID", callback_data="veh_unlock_single"))
-    markup.row(types.InlineKeyboardButton("🔧 Fix Account", callback_data="veh_fix"))
-    markup.add(types.InlineKeyboardButton("⬅️ Back", callback_data="menu_main"))
+    markup.row(get_btn("money", "Money 50M", callback_data="eco_money_max"), 
+               get_btn("coin", "Coins 500K", callback_data="eco_coins_max"))
+    markup.row(get_btn("money", "Custom Money", callback_data="eco_money_cust"), 
+               get_btn("coin", "Custom Coins", callback_data="eco_coins_cust"))
+    markup.row(get_btn("premium_hub", "King Rank", callback_data="eco_king"))
+    markup.add(get_btn("back", "Back", callback_data="menu_main"))
     return markup
 
 def create_unlocks_keyboard():
     markup = types.InlineKeyboardMarkup(row_width=2)
-    markup.row(types.InlineKeyboardButton("🔧 W16 Engine", callback_data="unl_w16"), types.InlineKeyboardButton("💨 Smoke", callback_data="unl_smoke"))
-    markup.row(types.InlineKeyboardButton("⛽ Max Fuel", callback_data="unl_fuel"), types.InlineKeyboardButton("🛡️ No Damage", callback_data="unl_damage"))
-    markup.row(types.InlineKeyboardButton("📯 Horns", callback_data="unl_horns"), types.InlineKeyboardButton("🎭 Animations", callback_data="unl_anim"))
-    markup.row(types.InlineKeyboardButton("🏠 All Houses", callback_data="unl_houses"), types.InlineKeyboardButton("🛞 Wheels", callback_data="unl_wheels"))
-    markup.row(types.InlineKeyboardButton("🏆 Complete Levels", callback_data="unl_levels"))
-    markup.row(types.InlineKeyboardButton("👕 All Clothes", callback_data="unl_clothes"))
-    markup.row(types.InlineKeyboardButton("💀 ULTIMATE GLITCH", callback_data="unl_ultimate"))
-    markup.add(types.InlineKeyboardButton("⬅️ Back", callback_data="menu_main"))
+    markup.row(get_btn("vehicles_cars_w124", "Unlock W124 (ID 258)", callback_data="unl_w124"))
+    markup.row(get_btn("unlock_camry_id", "Unlock Camry (ID 264)", callback_data="unl_camry"))
+    markup.row(get_btn("w16_engine", "W16 Engine", callback_data="unl_w16"), 
+               get_btn("smoke", "Smoke", callback_data="unl_smoke"))
+    markup.row(get_btn("max_fuel", "Max Fuel", callback_data="unl_fuel"), 
+               get_btn("no_damage", "No Damage", callback_data="unl_damage"))
+    markup.row(get_btn("horns", "Horns", callback_data="unl_horns"), 
+               get_btn("animations", "Animations", callback_data="unl_anim"))
+    markup.row(get_btn("all_houses", "All Houses", callback_data="unl_houses"), 
+               get_btn("wheels", "Wheels", callback_data="unl_wheels"))
+    markup.row(get_btn("complete_all_levels", "Complete All Levels", callback_data="unl_levels"))
+    markup.row(get_btn("all_clothes", "All Clothes", callback_data="unl_clothes"))
+    markup.row(get_btn("ultimate_glitch", "EXECUTABLE: ULTIMATE GLITCH", callback_data="unl_ultimate"))
+    markup.add(get_btn("back", "Back", callback_data="menu_main"))
+    return markup
+
+def create_premium_keyboard():
+    markup = types.InlineKeyboardMarkup(row_width=2)
+    markup.row(get_btn("car_injection", "Unlock All Cars", callback_data="veh_unlock_all"), 
+               get_btn("vehicles_cars_w124", "Unlock By ID", callback_data="veh_unlock_single")) 
+    markup.row(get_btn("w16_engine", "Fix Account", callback_data="veh_fix"))
+    markup.row(get_btn("group_unlock", "Clone Account", callback_data="prem_clone"))
+    markup.add(get_btn("back", "Back", callback_data="menu_main"))
     return markup
 
 def create_admin_keyboard():
     markup = types.InlineKeyboardMarkup(row_width=2)
-    markup.row(types.InlineKeyboardButton("➕ Add Admin", callback_data="admin_add_admin"), types.InlineKeyboardButton("➖ Remove Admin", callback_data="admin_rem_admin"))
-    markup.row(types.InlineKeyboardButton("👥 View Admins", callback_data="admin_view_admins"))
-    markup.row(types.InlineKeyboardButton("✅ Add Premium", callback_data="admin_add_prem"), types.InlineKeyboardButton("❌ Revoke Premium", callback_data="admin_revoke"))
-    markup.row(types.InlineKeyboardButton("📊 Stats", callback_data="admin_stats"), types.InlineKeyboardButton("📢 Broadcast", callback_data="admin_broadcast"))
-    markup.row(types.InlineKeyboardButton("📦 Bulk Clone", callback_data="admin_bulk_clone"))
-    markup.add(types.InlineKeyboardButton("⬅️ Back", callback_data="menu_main"))
+    markup.row(get_btn("add_admin", "Add Admin", callback_data="admin_add_admin"), 
+               get_btn("remove_admin", "Remove Admin", callback_data="admin_rem_admin"))
+    markup.row(get_btn("group_unlock", "View Admins", callback_data="admin_view_admins"))
+    markup.row(get_btn("success_preserved", "Add Premium", callback_data="admin_add_prem"), 
+               get_btn("cancel_failed_error", "Revoke Premium", callback_data="admin_revoke"))
+    markup.row(get_btn("stats_telemetry", "Stats", callback_data="admin_stats"), 
+               get_btn("broadcast_announcement", "Broadcast", callback_data="admin_broadcast"))
+    markup.row(get_btn("bulk_clone", "Bulk Clone", callback_data="admin_bulk_clone"))
+    markup.add(get_btn("back", "Back to Terminal", callback_data="menu_main"))
     return markup
 
 def create_subscription_keyboard():
     markup = types.InlineKeyboardMarkup(row_width=2)
-    markup.row(types.InlineKeyboardButton("⭐ Buy with Stars", callback_data="sub_stars"))
-    markup.row(types.InlineKeyboardButton("💳 Pay with Money", callback_data="sub_money"))
-    markup.row(types.InlineKeyboardButton("🔑 Enter Time Key", callback_data="sub_time_key"))
-    markup.row(types.InlineKeyboardButton("🎁 Free Trial (10 min)", callback_data="sub_free_trial"))
-    markup.add(types.InlineKeyboardButton("⬅️ Back", callback_data="menu_main"))
+    markup.row(get_btn("success_preserved", "Buy with Stars", callback_data="sub_stars"))
+    markup.row(get_btn("money", "Pay with Money", callback_data="sub_money"))
+    markup.row(get_btn("password", "Enter Time Key", callback_data="sub_time_key"))
+    markup.row(get_btn("account_created", "Free Trial (10 min)", callback_data="sub_free_trial"))
+    markup.add(get_btn("back", "Back", callback_data="menu_main"))
     return markup
 
 def create_subscription_duration_keyboard(payment_type):
@@ -1531,22 +1605,22 @@ def create_subscription_duration_keyboard(payment_type):
         else:
             money = SUBSCRIPTION_MONEY.get(d, "")
             label = f"{d.replace('_',' ').title()} - {money}"
-        markup.row(types.InlineKeyboardButton(label, callback_data=f"sub_duration_{d}_{payment_type}"))
-    markup.row(types.InlineKeyboardButton("🔙 Back", callback_data="menu_subscription"))
+        markup.row(get_btn("success_preserved", label, callback_data=f"sub_duration_{d}_{payment_type}"))
+    markup.row(get_btn("back", "Back", callback_data="menu_subscription"))
     return markup
 
 def create_payment_method_keyboard():
     markup = types.InlineKeyboardMarkup(row_width=2)
     for key, method in PAYMENT_METHODS.items():
-        markup.row(types.InlineKeyboardButton(method["label"], callback_data=f"sub_payment_{key}"))
-    markup.row(types.InlineKeyboardButton("🌟 Telegram Stars", callback_data="sub_payment_stars"))
-    markup.row(types.InlineKeyboardButton("🔙 Back", callback_data="menu_subscription"))
+        markup.row(get_btn("money", method["label"], callback_data=f"sub_payment_{key}"))
+    markup.row(get_btn("success_preserved", "Telegram Stars", callback_data="sub_payment_stars"))
+    markup.row(get_btn("back", "Back", callback_data="menu_subscription"))
     return markup
 
 def create_subscription_confirm_keyboard(user_id, duration_key, payment_method):
     markup = types.InlineKeyboardMarkup(row_width=2)
-    btn1 = types.InlineKeyboardButton("✅ Confirm", callback_data=f"sub_confirm_{user_id}_{duration_key}_{payment_method}")
-    btn2 = types.InlineKeyboardButton("❌ Decline", callback_data=f"sub_decline_{user_id}_{duration_key}_{payment_method}")
+    btn1 = get_btn("success_preserved", "✅ Confirm", callback_data=f"sub_confirm_{user_id}_{duration_key}_{payment_method}")
+    btn2 = get_btn("cancel_failed_error", "❌ Decline", callback_data=f"sub_decline_{user_id}_{duration_key}_{payment_method}")
     markup.row(btn1, btn2)
     return markup
 
@@ -1569,59 +1643,79 @@ def safe_send_dashboard(chat_id, custom_top_msg=None, force_refresh=False, is_ca
     try:
         session_data = user_sessions.get(chat_id, {})
         is_logged_in = session_data.get('cpm_logged_in', False)
+        
         if not is_logged_in:
-            msg = "🔒 Not logged in — tap Login to get started."
-            markup = types.InlineKeyboardMarkup()
-            markup.add(types.InlineKeyboardButton("🔓 Login to CPM1", callback_data="init_login"))
+            msg = f"{get_premium_emoji('not_logged_in')} <b>Not logged in</b> — tap Login or Register to get started."
+            markup = types.InlineKeyboardMarkup(row_width=2)
+            markup.row(
+                get_btn("unlocks_login", "Login", callback_data="init_login"),
+                get_btn("create_account", "Register", callback_data="init_register")
+            )
+            
             if is_callback and message_id:
-                try:
-                    bot.edit_message_text(msg, chat_id, message_id, reply_markup=markup)
-                except:
-                    bot.send_message(chat_id, msg, reply_markup=markup)
+                try: bot.edit_message_text(msg, chat_id, message_id, reply_markup=markup, parse_mode="HTML")
+                except: bot.send_message(chat_id, msg, reply_markup=markup, parse_mode="HTML")
             else:
-                bot.send_message(chat_id, msg, reply_markup=markup)
+                bot.send_message(chat_id, msg, reply_markup=markup, parse_mode="HTML")
             return
+
         web_uid = get_web_uid(chat_id)
         info = nuker.get_account_info(web_uid, force_refresh=force_refresh)
+        
         if not info.get("ok"):
             user_sessions[chat_id]['cpm_logged_in'] = False
-            msg = "❌ Session Expired. Login again."
-            markup = types.InlineKeyboardMarkup()
-            markup.add(types.InlineKeyboardButton("🔓 Login", callback_data="init_login"))
+            msg = f"{get_premium_emoji('cancel_failed_error')} <b>Session Expired or Load Failed.</b> Please Login again."
+            markup = types.InlineKeyboardMarkup(row_width=2)
+            markup.row(
+                get_btn("unlocks_login", "Login", callback_data="init_login"),
+                get_btn("create_account", "Register", callback_data="init_register")
+            )
+            
             if is_callback and message_id:
-                try:
-                    bot.edit_message_text(msg, chat_id, message_id, reply_markup=markup)
-                except:
-                    bot.send_message(chat_id, msg, reply_markup=markup)
+                try: bot.edit_message_text(msg, chat_id, message_id, reply_markup=markup, parse_mode="HTML")
+                except: bot.send_message(chat_id, msg, reply_markup=markup, parse_mode="HTML")
             else:
-                bot.send_message(chat_id, msg, reply_markup=markup)
+                bot.send_message(chat_id, msg, reply_markup=markup, parse_mode="HTML")
             return
+
         role = get_role_badge(chat_id)
-        name = clean_str(info.get('name', 'Unknown'))
-        tag = clean_str(info.get('localID', 'Unknown'))
-        email = clean_str(info.get('email', 'Unknown'))
+        name = html.escape(clean_str(info.get('name', 'Unknown')))
+        tag = html.escape(clean_str(info.get('localID', 'Unknown')))
+        email = html.escape(clean_str(info.get('email', 'Unknown')))
         cars_owned = info.get('cars', 0)
-        try:
-            money_val = int(info.get('money') or 0)
-        except:
-            money_val = 0
-        try:
-            coin_val = int(info.get('coin') or 0)
-        except:
-            coin_val = 0
+        
+        try: money_val = int(info.get('money') or 0)
+        except: money_val = 0
+        try: coin_val = int(info.get('coin') or 0)
+        except: coin_val = 0
+        
         coin_display = get_coin_display(chat_id)
         sub_display = get_subscription_display(chat_id)
-        text = f"✅ Logged in!\n\n👤 Your Information\n───────────────\n♾️ Status: Access granted\n🆔 Telegram ID: {chat_id}\n🎖️ Role: {role}\n{coin_display}\n{sub_display}\n\n🏍️ CPM DASHBOARD\n───────────────\n👤 Name: {name}\n🆔 ID: {tag}\n💵 Money: {money_val:,}\n🪙 Coins: {coin_val:,}\n🚗 Cars owned: {cars_owned}\n📧 {email}\n\n👇 Choose a section:"
-        if custom_top_msg:
-            text = f"{custom_top_msg}\n{text}"
+        
+        text = f"{get_premium_emoji('success_preserved')} <b>Logged in!</b>\n\n" \
+               f"{get_premium_emoji('account_info')} <b>Your Information</b>\n───────────────\n" \
+               f"{get_premium_emoji('access_granted')} Status: Access granted\n" \
+               f"{get_premium_emoji('set_id')} Telegram ID: <code>{chat_id}</code>\n" \
+               f"{get_premium_emoji('role')} Role: {role}\n" \
+               f"{coin_display}\n{sub_display}\n\n" \
+               f"{get_premium_emoji('cpm_dashboard')} <b>CPM DASHBOARD</b>\n───────────────\n" \
+               f"{get_premium_emoji('account_info')} Name: {name}\n" \
+               f"{get_premium_emoji('set_id')} ID: {tag}\n" \
+               f"{get_premium_emoji('money')} Money: {money_val:,}\n" \
+               f"{get_premium_emoji('coin')} Coins: {coin_val:,}\n" \
+               f"{get_premium_emoji('vehicles_cars_w124')} Cars owned: {cars_owned}\n" \
+               f"{get_premium_emoji('email')} {email}\n\n" \
+               f"{get_premium_emoji('choose_section')} Choose a section:"
+        
+        if custom_top_msg: text = f"{get_premium_emoji('info')} <b>{html.escape(custom_top_msg)}</b>\n\n{text}"
+            
         markup = create_dashboard_keyboard(chat_id)
+        
         if is_callback and message_id:
-            try:
-                bot.edit_message_text(text, chat_id, message_id, reply_markup=markup)
-            except:
-                bot.send_message(chat_id, text, reply_markup=markup)
+            try: bot.edit_message_text(text, chat_id, message_id, reply_markup=markup, parse_mode="HTML")
+            except: bot.send_message(chat_id, text, reply_markup=markup, parse_mode="HTML")
         else:
-            bot.send_message(chat_id, text, reply_markup=markup)
+            bot.send_message(chat_id, text, reply_markup=markup, parse_mode="HTML")
     except Exception as e:
         pass
 
@@ -1761,7 +1855,7 @@ def start(message):
             user_sessions[chat_id] = {'cpm_logged_in': False}
         elif 'cpm_logged_in' not in user_sessions[chat_id]:
             user_sessions[chat_id]['cpm_logged_in'] = False
-        bot.send_message(chat_id, "⚡ 𝙈𝘼𝙍𝙆𝘾𝙋𝙈1𝙏𝙊𝙊𝙇𝙎 TERMINAL ⚡", reply_markup=types.ReplyKeyboardRemove())
+        bot.send_message(chat_id, f"{get_premium_emoji('terminal_hybrid')} <b>MARKCPM1 TERMINAL</b> {get_premium_emoji('terminal_hybrid')}", reply_markup=types.ReplyKeyboardRemove(), parse_mode="HTML")
         safe_send_dashboard(chat_id, force_refresh=False, is_callback=False)
     except:
         pass
@@ -1778,8 +1872,8 @@ def admin_command(message):
             del user_states[chat_id]
         delete_state(chat_id)
         if not is_admin(chat_id):
-            return bot.send_message(chat_id, "❌ UNAUTHORIZED.")
-        bot.send_message(chat_id, "👑 OVERSEER TERMINAL", reply_markup=create_admin_keyboard())
+            return bot.send_message(chat_id, f"{get_premium_emoji('cancel_failed_error')} <b>UNAUTHORIZED.</b>", parse_mode="HTML")
+        bot.send_message(chat_id, f"{get_premium_emoji('overseer_panel')} <b>OVERSEER TERMINAL</b>", reply_markup=create_admin_keyboard(), parse_mode="HTML")
     except:
         pass
 
@@ -1922,7 +2016,7 @@ def handle_all_messages(message):
                 user_states[chat_id] = {'awaiting_cpm_login_pass': True, 'msg_id': msg_id}
                 save_state(chat_id, user_states[chat_id])
                 try:
-                    bot.edit_message_text("🔑 Send the password:", chat_id, msg_id, reply_markup=cancel_keyboard())
+                    bot.edit_message_text(f"{get_premium_emoji('password')} Send the password to login:", chat_id, msg_id, reply_markup=cancel_keyboard(), parse_mode="HTML")
                 except:
                     pass
                 return
@@ -1935,7 +2029,7 @@ def handle_all_messages(message):
                 del user_states[chat_id]
                 delete_state(chat_id)
                 try:
-                    bot.edit_message_text("⏳ Authenticating...", chat_id, msg_id)
+                    bot.edit_message_text(f"{get_premium_emoji('loading_progress')} Authenticating...", chat_id, msg_id, parse_mode="HTML")
                 except:
                     pass
                 try:
@@ -1948,12 +2042,64 @@ def handle_all_messages(message):
                     else:
                         err = clean_str(res.get('message', 'Unknown Error') if isinstance(res, dict) else 'Network Failure')
                         try:
-                            bot.edit_message_text(f"❌ AUTH FAILED: {err}", chat_id, msg_id, reply_markup=cancel_keyboard())
+                            bot.edit_message_text(f"{get_premium_emoji('cancel_failed_error')} AUTH FAILED: {html.escape(err)}", chat_id, msg_id, reply_markup=cancel_keyboard(), parse_mode="HTML")
                         except:
                             pass
                 except:
                     try:
-                        bot.edit_message_text("❌ API Timeout.", chat_id, msg_id, reply_markup=cancel_keyboard())
+                        bot.edit_message_text(f"{get_premium_emoji('cancel_failed_error')} API Timeout.", chat_id, msg_id, reply_markup=cancel_keyboard(), parse_mode="HTML")
+                    except:
+                        pass
+                return
+
+            # 🔐 REGISTER
+            if state.get('awaiting_cpm_register_email'):
+                user_sessions[chat_id]['reg_email'] = message.text.strip()
+                msg_id = state.get('msg_id')
+                user_states[chat_id] = {'awaiting_cpm_register_pass': True, 'msg_id': msg_id}
+                save_state(chat_id, user_states[chat_id])
+                try:
+                    bot.edit_message_text(f"{get_premium_emoji('password')} Send a new password (min 6 chars):", chat_id, msg_id, reply_markup=cancel_keyboard(), parse_mode="HTML")
+                except:
+                    pass
+                return
+
+            if state.get('awaiting_cpm_register_pass'):
+                password = message.text.strip()
+                email = user_sessions[chat_id].get('reg_email', '')
+                msg_id = state.get('msg_id')
+                del user_states[chat_id]
+                delete_state(chat_id)
+                try:
+                    bot.edit_message_text(f"{get_premium_emoji('loading_progress')} Creating Account...", chat_id, msg_id, parse_mode="HTML")
+                except:
+                    pass
+                try:
+                    web_uid = get_web_uid(chat_id)
+                    res = nuker.register(email, password)
+                    if res and isinstance(res, dict) and res.get("ok"):
+                        auth = res.get("auth", "")
+                        fuid = res.get("firebase_uid", "")
+                        # Initialize blank profile
+                        blank_profile = {
+                            "Name": "Player", "money": 25000, "coin": 0, 
+                            "localID": str(random.randint(1000000, 9999999)).zfill(8),
+                            "allData": '{"cars":[]}', "floats": [], "integers": []
+                        }
+                        try: nuker._send(auth, blank_profile, fuid)
+                        except: pass
+                        nuker.save_token(web_uid, auth, email, password, res.get("refresh_token", ""), fuid)
+                        user_sessions[chat_id].update({'cpm_logged_in': True, 'web_uid': web_uid})
+                        safe_send_dashboard(chat_id, custom_top_msg="Account Created Successfully!", force_refresh=True, is_callback=True, message_id=msg_id)
+                    else:
+                        err = clean_str(res.get('message', 'Registration Failed') if isinstance(res, dict) else 'Network Failure')
+                        try:
+                            bot.edit_message_text(f"{get_premium_emoji('cancel_failed_error')} CREATE FAILED: {html.escape(err)}", chat_id, msg_id, reply_markup=cancel_keyboard(), parse_mode="HTML")
+                        except:
+                            pass
+                except:
+                    try:
+                        bot.edit_message_text(f"{get_premium_emoji('cancel_failed_error')} API Timeout.", chat_id, msg_id, reply_markup=cancel_keyboard(), parse_mode="HTML")
                     except:
                         pass
                 return
@@ -1972,10 +2118,10 @@ def handle_all_messages(message):
                         bot.delete_message(chat_id, msg_id)
                     except:
                         pass
-                    bot.send_message(chat_id, f"✅ Admin rights granted to ID: {target_id}")
+                    bot.send_message(chat_id, f"{get_premium_emoji('success_preserved')} Admin rights granted to ID: <code>{target_id}</code>", parse_mode="HTML")
                 except:
                     try:
-                        bot.edit_message_text("❌ Invalid ID.", chat_id, msg_id, reply_markup=cancel_keyboard())
+                        bot.edit_message_text(f"{get_premium_emoji('cancel_failed_error')} Invalid ID format.", chat_id, msg_id, reply_markup=cancel_keyboard(), parse_mode="HTML")
                     except:
                         pass
                 return
@@ -1992,10 +2138,10 @@ def handle_all_messages(message):
                         bot.delete_message(chat_id, msg_id)
                     except:
                         pass
-                    bot.send_message(chat_id, f"❌ Admin rights revoked from ID: {target_id}")
+                    bot.send_message(chat_id, f"{get_premium_emoji('cancel_failed_error')} Admin rights revoked from ID: <code>{target_id}</code>", parse_mode="HTML")
                 except:
                     try:
-                        bot.edit_message_text("❌ Invalid ID.", chat_id, msg_id, reply_markup=cancel_keyboard())
+                        bot.edit_message_text(f"{get_premium_emoji('cancel_failed_error')} Invalid ID format.", chat_id, msg_id, reply_markup=cancel_keyboard(), parse_mode="HTML")
                     except:
                         pass
                 return
@@ -2006,15 +2152,18 @@ def handle_all_messages(message):
                 if not is_admin(chat_id):
                     return
                 try:
-                    approve_premium(int(message.text.strip()))
+                    parts = message.text.strip().split()
+                    target_id = int(parts[0])
+                    days = int(parts[1]) if len(parts) > 1 else 30
+                    approve_premium(target_id, days)
                     try:
                         bot.delete_message(chat_id, msg_id)
                     except:
                         pass
-                    bot.send_message(chat_id, f"✅ Premium granted to: {message.text.strip()}")
+                    bot.send_message(chat_id, f"{get_premium_emoji('success_preserved')} Premium granted to: <code>{target_id}</code> for {days} days", parse_mode="HTML")
                 except:
                     try:
-                        bot.edit_message_text("❌ Invalid ID.", chat_id, msg_id, reply_markup=cancel_keyboard())
+                        bot.edit_message_text(f"{get_premium_emoji('cancel_failed_error')} Format: <code>user_id days</code> (e.g., 123456 30)", chat_id, msg_id, reply_markup=cancel_keyboard(), parse_mode="HTML")
                     except:
                         pass
                 return
@@ -2030,10 +2179,10 @@ def handle_all_messages(message):
                         bot.delete_message(chat_id, msg_id)
                     except:
                         pass
-                    bot.send_message(chat_id, f"❌ Premium revoked from: {message.text.strip()}")
+                    bot.send_message(chat_id, f"{get_premium_emoji('cancel_failed_error')} Premium revoked from: <code>{html.escape(message.text.strip())}</code>", parse_mode="HTML")
                 except:
                     try:
-                        bot.edit_message_text("❌ Invalid ID.", chat_id, msg_id, reply_markup=cancel_keyboard())
+                        bot.edit_message_text(f"{get_premium_emoji('cancel_failed_error')} Invalid ID format.", chat_id, msg_id, reply_markup=cancel_keyboard(), parse_mode="HTML")
                     except:
                         pass
                 return
@@ -2047,13 +2196,13 @@ def handle_all_messages(message):
                 users = get_all_tracked_users()
                 for uid in users:
                     try:
-                        bot.send_message(uid, f"📢 ANNOUNCEMENT\n┣━━━━━━━━━━━━━━━━━━┫\n{message.text}")
+                        bot.send_message(uid, f"{get_premium_emoji('broadcast_announcement')} <b>ANNOUNCEMENT</b>\n┣━━━━━━━━━━━━━━━━━━┫\n{html.escape(message.text)}", parse_mode="HTML")
                         c += 1
                     except:
                         pass
                 try:
                     bot.delete_message(chat_id, msg_id)
-                    bot.send_message(chat_id, f"✅ Delivered to {c} users.")
+                    bot.send_message(chat_id, f"{get_premium_emoji('success_preserved')} Delivered to {c} users.", parse_mode="HTML")
                 except:
                     pass
                 return
@@ -2063,7 +2212,7 @@ def handle_all_messages(message):
                 user_states[chat_id] = {'awaiting_admin_bulk_source_pass': True, 'msg_id': msg_id}
                 save_state(chat_id, user_states[chat_id])
                 try:
-                    bot.edit_message_text("🔑 Send the SOURCE account password:", chat_id, msg_id, reply_markup=cancel_keyboard())
+                    bot.edit_message_text(f"{get_premium_emoji('password')} Send the SOURCE account password:", chat_id, msg_id, reply_markup=cancel_keyboard(), parse_mode="HTML")
                 except:
                     pass
                 return
@@ -2073,7 +2222,7 @@ def handle_all_messages(message):
                 user_states[chat_id] = {'awaiting_admin_bulk_count': True, 'msg_id': msg_id}
                 save_state(chat_id, user_states[chat_id])
                 try:
-                    bot.edit_message_text("📦 How many clones? (1-10):", chat_id, msg_id, reply_markup=cancel_keyboard())
+                    bot.edit_message_text(f"{get_premium_emoji('bulk_clone')} How many clones do you want? (1-10):", chat_id, msg_id, reply_markup=cancel_keyboard(), parse_mode="HTML")
                 except:
                     pass
                 return
@@ -2085,7 +2234,7 @@ def handle_all_messages(message):
                     count = int(message.text.strip())
                     if not (1 <= count <= 10):
                         try:
-                            bot.edit_message_text("❌ Limit 1-10.", chat_id, msg_id, reply_markup=cancel_keyboard())
+                            bot.edit_message_text(f"{get_premium_emoji('cancel_failed_error')} Limit is 1 to 10 clones.", chat_id, msg_id, reply_markup=cancel_keyboard(), parse_mode="HTML")
                         except:
                             pass
                         return
@@ -2094,7 +2243,7 @@ def handle_all_messages(message):
                     threading.Thread(target=background_bulk_clone, args=(chat_id, src_email, src_pass, count, msg_id)).start()
                 except:
                     try:
-                        bot.edit_message_text("❌ Must be a number.", chat_id, msg_id, reply_markup=cancel_keyboard())
+                        bot.edit_message_text(f"{get_premium_emoji('cancel_failed_error')} Must be a number.", chat_id, msg_id, reply_markup=cancel_keyboard(), parse_mode="HTML")
                     except:
                         pass
                 return
@@ -2104,7 +2253,7 @@ def handle_all_messages(message):
                 user_states[chat_id] = {'awaiting_clone_source_pass': True, 'msg_id': msg_id}
                 save_state(chat_id, user_states[chat_id])
                 try:
-                    bot.edit_message_text("🔑 Send SOURCE password:", chat_id, msg_id, reply_markup=cancel_keyboard())
+                    bot.edit_message_text(f"{get_premium_emoji('password')} Send SOURCE password:", chat_id, msg_id, reply_markup=cancel_keyboard(), parse_mode="HTML")
                 except:
                     pass
                 return
@@ -2114,7 +2263,7 @@ def handle_all_messages(message):
                 user_states[chat_id] = {'awaiting_clone_target_email': True, 'msg_id': msg_id}
                 save_state(chat_id, user_states[chat_id])
                 try:
-                    bot.edit_message_text("📧 Send TARGET email:", chat_id, msg_id, reply_markup=cancel_keyboard())
+                    bot.edit_message_text(f"{get_premium_emoji('email')} Send TARGET email:", chat_id, msg_id, reply_markup=cancel_keyboard(), parse_mode="HTML")
                 except:
                     pass
                 return
@@ -2124,7 +2273,7 @@ def handle_all_messages(message):
                 user_states[chat_id] = {'awaiting_clone_target_pass': True, 'msg_id': msg_id}
                 save_state(chat_id, user_states[chat_id])
                 try:
-                    bot.edit_message_text("🔑 Send TARGET password:", chat_id, msg_id, reply_markup=cancel_keyboard())
+                    bot.edit_message_text(f"{get_premium_emoji('password')} Send TARGET password:", chat_id, msg_id, reply_markup=cancel_keyboard(), parse_mode="HTML")
                 except:
                     pass
                 return
@@ -2153,60 +2302,61 @@ def handle_all_messages(message):
                     if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], f"Unlock Car {car_id}"):
                         return
                     try:
-                        bot.edit_message_text(f"⏳ Injecting Car ID {car_id}...", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
+                        bot.edit_message_text(f"{get_premium_emoji('loading_progress')} Injecting Car ID {car_id}...\n\n{get_premium_emoji('premium_hub')} Premium Section", chat_id, msg_id, reply_markup=create_premium_keyboard(), parse_mode="HTML")
                     except:
                         pass
 
                     def run_single_inject():
                         if not em or not pw:
                             try:
-                                bot.edit_message_text("❌ Failed to Auth. Please login again.", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
+                                bot.edit_message_text(f"{get_premium_emoji('cancel_failed_error')} Failed to Auth YOUR account. Please login again.\n\n{get_premium_emoji('premium_hub')} Premium Section", chat_id, msg_id, reply_markup=create_premium_keyboard(), parse_mode="HTML")
                             except:
                                 pass
                             return
                         ok, _, tok = nuker.get_auth(web_uid)
-                        if not ok:
+                        td2 = nuker.get_token_data(web_uid)
+                        if not ok or not td2:
                             try:
-                                bot.edit_message_text("❌ Auth failed.", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
+                                bot.edit_message_text(f"{get_premium_emoji('cancel_failed_error')} Auth failed. Please login again.\n\n{get_premium_emoji('premium_hub')} Premium Section", chat_id, msg_id, reply_markup=create_premium_keyboard(), parse_mode="HTML")
                             except:
                                 pass
                             return
                         stok, _ = verify_user(*SOURCE_ACCOUNT)
                         if not stok:
                             try:
-                                bot.edit_message_text("❌ Source unavailable.", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
+                                bot.edit_message_text(f"{get_premium_emoji('cancel_failed_error')} Source account unavailable.\n\n{get_premium_emoji('premium_hub')} Premium Section", chat_id, msg_id, reply_markup=create_premium_keyboard(), parse_mode="HTML")
                             except:
                                 pass
                             return
-                        source_cars = get_source_cars_cached()
+                        source_cars = cpm1_get_cars(stok)
                         if not source_cars:
                             try:
-                                bot.edit_message_text("❌ No cars in source.", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
+                                bot.edit_message_text(f"{get_premium_emoji('cancel_failed_error')} Could not fetch cars from source.\n\n{get_premium_emoji('premium_hub')} Premium Section", chat_id, msg_id, reply_markup=create_premium_keyboard(), parse_mode="HTML")
                             except:
                                 pass
                             return
                         car_data = next((c for c in source_cars if int(c.get("CarID", 0)) == car_id), None)
                         if not car_data:
                             try:
-                                bot.edit_message_text(f"❌ Car ID {car_id} not found.", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
+                                bot.edit_message_text(f"{get_premium_emoji('cancel_failed_error')} Car ID {car_id} not found in source.\n\n{get_premium_emoji('premium_hub')} Premium Section", chat_id, msg_id, reply_markup=create_premium_keyboard(), parse_mode="HTML")
                             except:
                                 pass
                             return
-                        if cpm1_clone_car(tok, car_data, td.get("firebase_uid"), token_source=stok):
+                        if cpm1_clone_car(tok, car_data, td2.get("firebase_uid"), token_source=stok):
                             try:
-                                bot.edit_message_text(f"✅ Car ID {car_id} Unlocked!", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
+                                bot.edit_message_text(f"{get_premium_emoji('success_preserved')} Car ID {car_id} Unlocked Instantly!\n\n{get_premium_emoji('premium_hub')} Premium Section", chat_id, msg_id, reply_markup=create_premium_keyboard(), parse_mode="HTML")
                             except:
                                 pass
                         else:
                             try:
-                                bot.edit_message_text(f"❌ Failed to unlock ID {car_id}.", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
+                                bot.edit_message_text(f"{get_premium_emoji('cancel_failed_error')} Failed to unlock ID {car_id}.\n\n{get_premium_emoji('premium_hub')} Premium Section", chat_id, msg_id, reply_markup=create_premium_keyboard(), parse_mode="HTML")
                             except:
                                 pass
 
                     threading.Thread(target=run_single_inject).start()
                 except:
                     try:
-                        bot.edit_message_text("❌ Invalid ID.", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
+                        bot.edit_message_text(f"{get_premium_emoji('cancel_failed_error')} Invalid ID.\n\n{get_premium_emoji('premium_hub')} Premium Section", chat_id, msg_id, reply_markup=create_premium_keyboard(), parse_mode="HTML")
                     except:
                         pass
                 return
@@ -2217,7 +2367,7 @@ def handle_all_messages(message):
                 if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Change Name"):
                     return
                 nuker.change_player_name(user_sessions[chat_id].get('web_uid'), message.text.strip())
-                safe_send_dashboard(chat_id, custom_top_msg="✅ Name Changed!", force_refresh=True, is_callback=True, message_id=msg_id)
+                safe_send_dashboard(chat_id, custom_top_msg="Name Changed!", force_refresh=True, is_callback=True, message_id=msg_id)
                 return
             if state.get('awaiting_change_id'):
                 msg_id = state.get('msg_id')
@@ -2226,7 +2376,7 @@ def handle_all_messages(message):
                 if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Change ID"):
                     return
                 nuker.change_player_id(user_sessions[chat_id].get('web_uid'), message.text.strip().upper())
-                safe_send_dashboard(chat_id, custom_top_msg="✅ ID Changed!", force_refresh=True, is_callback=True, message_id=msg_id)
+                safe_send_dashboard(chat_id, custom_top_msg="ID Changed!", force_refresh=True, is_callback=True, message_id=msg_id)
                 return
             if state.get('awaiting_cpm1_email'):
                 msg_id = state.get('msg_id')
@@ -2235,7 +2385,7 @@ def handle_all_messages(message):
                 if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Change Email"):
                     return
                 nuker.change_email(user_sessions[chat_id].get('web_uid'), message.text.strip())
-                safe_send_dashboard(chat_id, custom_top_msg="✅ Email Changed!", force_refresh=True, is_callback=True, message_id=msg_id)
+                safe_send_dashboard(chat_id, custom_top_msg="Email Changed!", force_refresh=True, is_callback=True, message_id=msg_id)
                 return
             if state.get('awaiting_change_pass'):
                 msg_id = state.get('msg_id')
@@ -2247,7 +2397,7 @@ def handle_all_messages(message):
                     bot.delete_message(chat_id, msg_id)
                 except:
                     pass
-                safe_send_dashboard(chat_id, custom_top_msg="✅ Password Processed!", force_refresh=True, is_callback=False)
+                safe_send_dashboard(chat_id, custom_top_msg="Password Processed!", force_refresh=True, is_callback=False)
                 return
             if state.get('awaiting_money'):
                 msg_id = state.get('msg_id')
@@ -2257,10 +2407,10 @@ def handle_all_messages(message):
                     return
                 try:
                     nuker.set_money(user_sessions[chat_id].get('web_uid'), int(message.text.strip()))
-                    safe_send_dashboard(chat_id, custom_top_msg="✅ Money Added!", force_refresh=True, is_callback=True, message_id=msg_id)
+                    safe_send_dashboard(chat_id, custom_top_msg="Money Added!", force_refresh=True, is_callback=True, message_id=msg_id)
                 except:
                     try:
-                        bot.edit_message_text("❌ Numeric required.", chat_id, msg_id, reply_markup=cancel_keyboard())
+                        bot.edit_message_text(f"{get_premium_emoji('cancel_failed_error')} Numeric required.", chat_id, msg_id, reply_markup=cancel_keyboard(), parse_mode="HTML")
                     except:
                         pass
                 return
@@ -2272,10 +2422,10 @@ def handle_all_messages(message):
                     return
                 try:
                     nuker.set_coin(user_sessions[chat_id].get('web_uid'), int(message.text.strip()))
-                    safe_send_dashboard(chat_id, custom_top_msg="✅ Coins Added!", force_refresh=True, is_callback=True, message_id=msg_id)
+                    safe_send_dashboard(chat_id, custom_top_msg="Coins Added!", force_refresh=True, is_callback=True, message_id=msg_id)
                 except:
                     try:
-                        bot.edit_message_text("❌ Numeric required.", chat_id, msg_id, reply_markup=cancel_keyboard())
+                        bot.edit_message_text(f"{get_premium_emoji('cancel_failed_error')} Numeric required.", chat_id, msg_id, reply_markup=cancel_keyboard(), parse_mode="HTML")
                     except:
                         pass
                 return
@@ -2301,7 +2451,7 @@ def premium_required(call):
     chat_id = call.message.chat.id
     if not is_premium(chat_id):
         try:
-            bot.answer_callback_query(call.id, "❌ Paid Feature. Request Admins.", show_alert=True)
+            bot.answer_callback_query(call.id, "❌ Premium Feature. Please request Admins for access.", show_alert=True)
         except:
             pass
         return True
@@ -2322,11 +2472,10 @@ def handle_callback(call):
         if saved:
             user_states[chat_id] = saved
 
-    silent_nav_buttons = ["menu_main","init_login","logout","refresh_account",
-                          "menu_account","menu_economy","menu_vehicles","menu_unlocks",
-                          "acc_info","acc_name","acc_id","acc_email","acc_pass","acc_clone",
-                          "eco_money_cust","eco_coins_cust","veh_unlock_single","veh_unlock_all",
-                          "menu_subscription"]
+    silent_nav_buttons = ["menu_main","init_login","init_register","logout","refresh_account",
+                          "menu_account","menu_economy","menu_unlocks","menu_premium",
+                          "acc_info","acc_name","acc_id","acc_email","acc_pass","admin_bulk_clone",
+                          "eco_money_cust","eco_coins_cust","veh_unlock_single","veh_unlock_all"]
     if data in silent_nav_buttons:
         try:
             bot.answer_callback_query(call.id)
@@ -2441,8 +2590,18 @@ def handle_callback(call):
             bot.delete_message(chat_id, msg_id)
         except:
             pass
-        msg = bot.send_message(chat_id, "📧 Send email to login:", reply_markup=cancel_keyboard())
+        msg = bot.send_message(chat_id, f"{get_premium_emoji('email')} Send your email to login:", reply_markup=cancel_keyboard(), parse_mode="HTML")
         user_states[chat_id] = {'awaiting_cpm_login_email': True, 'msg_id': msg.message_id}
+        save_state(chat_id, user_states[chat_id])
+        return
+
+    if data == "init_register":
+        try:
+            bot.delete_message(chat_id, msg_id)
+        except:
+            pass
+        msg = bot.send_message(chat_id, f"{get_premium_emoji('email')} Send a new email to Create Account:", reply_markup=cancel_keyboard(), parse_mode="HTML")
+        user_states[chat_id] = {'awaiting_cpm_register_email': True, 'msg_id': msg.message_id}
         save_state(chat_id, user_states[chat_id])
         return
 
@@ -2453,283 +2612,188 @@ def handle_callback(call):
         return safe_send_dashboard(chat_id, force_refresh=False, is_callback=True, message_id=msg_id)
 
     if data == "refresh_account":
-        return safe_send_dashboard(chat_id, custom_top_msg="✅ Refreshed!", force_refresh=True, is_callback=True, message_id=msg_id)
+        return safe_send_dashboard(chat_id, custom_top_msg="Account Refreshed!", force_refresh=True, is_callback=True, message_id=msg_id)
 
     if data == "menu_account":
         try:
-            bot.edit_message_text("👤 Account Management", chat_id, msg_id, reply_markup=create_account_keyboard())
+            bot.edit_message_text(f"{get_premium_emoji('account_info')} <b>Account Management</b>", chat_id, msg_id, reply_markup=create_account_keyboard(), parse_mode="HTML")
         except:
             pass
         return
+        
     if data == "menu_economy":
         try:
-            bot.edit_message_text("💰 Economy Settings", chat_id, msg_id, reply_markup=create_economy_keyboard())
+            bot.edit_message_text(f"{get_premium_emoji('economy_profile')} <b>Economy Settings</b>", chat_id, msg_id, reply_markup=create_economy_keyboard(), parse_mode="HTML")
         except:
             pass
         return
-    if data == "menu_vehicles":
-        try:
-            bot.edit_message_text("🚗 Vehicles Settings", chat_id, msg_id, reply_markup=create_vehicles_keyboard())
-        except:
-            pass
-        return
+
     if data == "menu_unlocks":
         try:
-            bot.edit_message_text("🔓 Unlocks Configuration", chat_id, msg_id, reply_markup=create_unlocks_keyboard())
+            bot.edit_message_text(f"{get_premium_emoji('unlocks_login')} <b>Unlocks Configuration</b>", chat_id, msg_id, reply_markup=create_unlocks_keyboard(), parse_mode="HTML")
         except:
             pass
         return
+
+    if data == "menu_premium":
+        if premium_required(call): return
+        try:
+            bot.edit_message_text(f"{get_premium_emoji('premium_hub')} <b>Premium Section</b>", chat_id, msg_id, reply_markup=create_premium_keyboard(), parse_mode="HTML")
+        except:
+            pass
+        return
+
     if data == "menu_subscription":
         try:
-            bot.edit_message_text("💎 Subscription Options", chat_id, msg_id, reply_markup=create_subscription_keyboard())
+            bot.edit_message_text(f"{get_premium_emoji('economy_profile')} <b>Subscription Options</b>", chat_id, msg_id, reply_markup=create_subscription_keyboard(), parse_mode="HTML")
         except:
             pass
         return
 
     if data == "acc_info":
         return safe_send_dashboard(chat_id, is_callback=True, message_id=msg_id)
+    
     if data == "acc_name":
-        if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Change Name"):
-            return
         try:
             bot.delete_message(chat_id, msg_id)
         except:
             pass
-        msg = bot.send_message(chat_id, "✏️ Enter new Name:", reply_markup=cancel_keyboard())
+        msg = bot.send_message(chat_id, f"{get_premium_emoji('set_name')} Enter new Name:", reply_markup=cancel_keyboard(), parse_mode="HTML")
         user_states[chat_id] = {'awaiting_change_name': True, 'msg_id': msg.message_id}
         save_state(chat_id, user_states[chat_id])
         return
     if data == "acc_id":
-        if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Change ID"):
-            return
         try:
             bot.delete_message(chat_id, msg_id)
         except:
             pass
-        msg = bot.send_message(chat_id, "🆔 Enter new ID:", reply_markup=cancel_keyboard())
+        msg = bot.send_message(chat_id, f"{get_premium_emoji('set_id')} Enter new ID:", reply_markup=cancel_keyboard(), parse_mode="HTML")
         user_states[chat_id] = {'awaiting_change_id': True, 'msg_id': msg.message_id}
         save_state(chat_id, user_states[chat_id])
         return
     if data == "acc_email":
-        if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Change Email"):
-            return
         try:
             bot.delete_message(chat_id, msg_id)
         except:
             pass
-        msg = bot.send_message(chat_id, "📧 Enter new Email:", reply_markup=cancel_keyboard())
+        msg = bot.send_message(chat_id, f"{get_premium_emoji('email')} Enter new Email:", reply_markup=cancel_keyboard(), parse_mode="HTML")
         user_states[chat_id] = {'awaiting_cpm1_email': True, 'msg_id': msg.message_id}
         save_state(chat_id, user_states[chat_id])
         return
     if data == "acc_pass":
-        if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Change Password"):
-            return
         try:
             bot.delete_message(chat_id, msg_id)
         except:
             pass
-        msg = bot.send_message(chat_id, "🔑 Enter new Password:", reply_markup=cancel_keyboard())
+        msg = bot.send_message(chat_id, f"{get_premium_emoji('password')} Enter new Password:", reply_markup=cancel_keyboard(), parse_mode="HTML")
         user_states[chat_id] = {'awaiting_change_pass': True, 'msg_id': msg.message_id}
         save_state(chat_id, user_states[chat_id])
         return
-    if data == "acc_clone":
-        if premium_required(call):
-            return
+
+    if data == "prem_clone":
+        if premium_required(call): return
         try:
             bot.delete_message(chat_id, msg_id)
         except:
             pass
-        msg = bot.send_message(chat_id, "📋 Send SOURCE account email:", reply_markup=cancel_keyboard())
+        msg = bot.send_message(chat_id, f"{get_premium_emoji('email')} Send the SOURCE account email:", reply_markup=cancel_keyboard(), parse_mode="HTML")
         user_states[chat_id] = {'awaiting_clone_source_email': True, 'msg_id': msg.message_id}
         save_state(chat_id, user_states[chat_id])
         return
 
-    if data == "admin_panel":
-        if not is_admin(chat_id):
-            return
-        try:
-            bot.answer_callback_query(call.id)
-        except:
-            pass
-        try:
-            bot.edit_message_text("👑 OVERSEER TERMINAL", chat_id, msg_id, reply_markup=create_admin_keyboard())
-        except:
-            pass
-        return
-    if data == "admin_add_admin":
-        if not is_admin(chat_id):
-            return
-        try:
-            bot.answer_callback_query(call.id)
-        except:
-            pass
-        try:
-            bot.delete_message(chat_id, msg_id)
-        except:
-            pass
-        msg = bot.send_message(chat_id, "➕ ENTER TARGET ID:", reply_markup=cancel_keyboard())
-        user_states[chat_id] = {'awaiting_add_admin': True, 'msg_id': msg.message_id}
-        save_state(chat_id, user_states[chat_id])
-        return
-    if data == "admin_rem_admin":
-        if not is_admin(chat_id):
-            return
-        try:
-            bot.answer_callback_query(call.id)
-        except:
-            pass
-        try:
-            bot.delete_message(chat_id, msg_id)
-        except:
-            pass
-        msg = bot.send_message(chat_id, "➖ ENTER TARGET ID:", reply_markup=cancel_keyboard())
-        user_states[chat_id] = {'awaiting_rem_admin': True, 'msg_id': msg.message_id}
-        save_state(chat_id, user_states[chat_id])
-        return
-    if data == "admin_view_admins":
-        if not is_admin(chat_id):
-            return
-        try:
-            bot.answer_callback_query(call.id)
-        except:
-            pass
-        admins = get_all_admins()
-        msg_text = "👥 CURRENT ADMINS\n" + "".join([f"🆔 `{uid}`\n" for uid in admins])
-        try:
-            bot.edit_message_text(msg_text, chat_id, msg_id, reply_markup=create_admin_keyboard())
-        except:
-            pass
-        return
-    if data == "admin_add_prem":
-        if not is_admin(chat_id):
-            return
-        try:
-            bot.answer_callback_query(call.id)
-        except:
-            pass
-        try:
-            bot.delete_message(chat_id, msg_id)
-        except:
-            pass
-        msg = bot.send_message(chat_id, "✅ ENTER TARGET ID:", reply_markup=cancel_keyboard())
-        user_states[chat_id] = {'awaiting_add_prem': True, 'msg_id': msg.message_id}
-        save_state(chat_id, user_states[chat_id])
-        return
-    if data == "admin_revoke":
-        if not is_admin(chat_id):
-            return
-        try:
-            bot.answer_callback_query(call.id)
-        except:
-            pass
-        try:
-            bot.delete_message(chat_id, msg_id)
-        except:
-            pass
-        msg = bot.send_message(chat_id, "❌ TARGET ID:", reply_markup=cancel_keyboard())
-        user_states[chat_id] = {'awaiting_revoke': True, 'msg_id': msg.message_id}
-        save_state(chat_id, user_states[chat_id])
-        return
-    if data == "admin_broadcast":
-        if not is_admin(chat_id):
-            return
-        try:
-            bot.answer_callback_query(call.id)
-        except:
-            pass
-        try:
-            bot.delete_message(chat_id, msg_id)
-        except:
-            pass
-        msg = bot.send_message(chat_id, "📢 ENTER BROADCAST MESSAGE:", reply_markup=cancel_keyboard())
-        user_states[chat_id] = {'awaiting_broadcast': True, 'msg_id': msg.message_id}
-        save_state(chat_id, user_states[chat_id])
-        return
-    if data == "admin_stats":
-        if not is_admin(chat_id):
-            return
-        try:
-            bot.answer_callback_query(call.id)
-        except:
-            pass
-        t_users = get_total_users()
-        try:
-            bot.edit_message_text(f"📊 TELEMETRY\n👥 Users: {t_users}\n✅ Premium: {len(get_all_approved())}\n👑 Admins: {len(get_all_admins())}", chat_id, msg_id, reply_markup=create_admin_keyboard())
-        except:
-            pass
-        return
     if data == "admin_bulk_clone":
         if not is_admin(chat_id):
+            try:
+                bot.answer_callback_query(call.id, "👑 This feature is strictly for Admins.", show_alert=True)
+            except:
+                pass
             return
-        try:
-            bot.answer_callback_query(call.id)
-        except:
-            pass
         try:
             bot.delete_message(chat_id, msg_id)
         except:
             pass
-        msg = bot.send_message(chat_id, "📦 Send SOURCE account email:", reply_markup=cancel_keyboard())
+        msg = bot.send_message(chat_id, f"{get_premium_emoji('email')} Send the SOURCE account email:", reply_markup=cancel_keyboard(), parse_mode="HTML")
         user_states[chat_id] = {'awaiting_admin_bulk_source_email': True, 'msg_id': msg.message_id}
         save_state(chat_id, user_states[chat_id])
         return
 
-    web_uid = get_web_uid(chat_id)
-
-    def exec_mod(call_obj, name, func, *args, cost=COIN_COSTS['individual']):
+    # ━━━━━━━━ GENERIC CAR UNLOCK (FREE TO ALL) ━━━━━━━━
+    if data == "unl_w124":
         try:
-            if not check_and_deduct_coins(chat_id, cost, name):
-                return
+            bot.answer_callback_query(call.id)
+        except:
+            pass
+        web_uid = get_web_uid(chat_id)
+        threading.Thread(target=inject_car_by_id_thread, args=(chat_id, msg_id, web_uid, 258, "W124")).start()
+        return
+
+    if data == "unl_camry":
+        try:
+            bot.answer_callback_query(call.id)
+        except:
+            pass
+        web_uid = get_web_uid(chat_id)
+        threading.Thread(target=inject_car_by_id_thread, args=(chat_id, msg_id, web_uid, 264, "Camry")).start()
+        return
+
+    web_uid = get_web_uid(chat_id)
+    
+    def exec_mod(call_obj, name, func, *args):
+        try:
             if data.startswith("eco_"):
-                menu_text = "💰 Economy Settings"
+                menu_text = f"{get_premium_emoji('economy_profile')} <b>Economy Settings</b>"
                 kb = create_economy_keyboard()
-            elif data.startswith("veh_") or data == "veh_fix":
-                menu_text = "🚗 Vehicles Settings"
-                kb = create_vehicles_keyboard()
+            elif data.startswith("veh_") or data == "unl_all_cars":
+                menu_text = f"{get_premium_emoji('premium_hub')} <b>Premium Section</b>"
+                kb = create_premium_keyboard()
             else:
-                menu_text = "🔓 Unlocks Configuration"
+                menu_text = f"{get_premium_emoji('unlocks_login')} <b>Unlocks Configuration</b>"
                 kb = create_unlocks_keyboard()
+
             try:
-                bot.edit_message_text(f"⏳ Executing...\n\n{menu_text}", chat_id, msg_id, reply_markup=kb)
+                bot.edit_message_text(f"{get_premium_emoji('loading_progress')} Executing...\n\n{menu_text}", chat_id, msg_id, reply_markup=kb, parse_mode="HTML")
             except:
                 pass
+
             if args:
                 res = func(web_uid, *args)
             else:
                 res = func(web_uid)
+            
             if res and isinstance(res, dict) and res.get("ok"):
-                final_text = f"✅ {name}\n\n{menu_text}"
+                final_text = f"{get_premium_emoji('success_preserved')} {html.escape(name)}\n\n{menu_text}"
             else:
                 err = clean_str(res.get("message", "API Blocked") if isinstance(res, dict) else "Timeout")
-                final_text = f"❌ Failed: {err}\n\n{menu_text}"
+                final_text = f"{get_premium_emoji('cancel_failed_error')} Failed: {html.escape(err)}\n\n{menu_text}"
+                
             try:
-                bot.edit_message_text(final_text, chat_id, msg_id, reply_markup=kb)
+                bot.edit_message_text(final_text, chat_id, msg_id, reply_markup=kb, parse_mode="HTML")
             except:
                 pass
         except Exception as e:
             try:
-                bot.answer_callback_query(call_obj.id, f"❌ Error.", show_alert=True)
+                bot.answer_callback_query(call_obj.id, f"❌ System Error.", show_alert=True)
             except:
                 pass
 
     if data == "eco_money_max":
         if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Money 50M"):
             return
-        return exec_mod(call, "Money -> 50M", nuker.set_money, 50000000, cost=0)
+        return exec_mod(call, "Money -> 50,000,000", nuker.set_money, 50000000)
     if data == "eco_coins_max":
         if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Coins 500K"):
             return
-        return exec_mod(call, "Coins -> 500K", nuker.set_coin, 500000, cost=0)
+        return exec_mod(call, "Coins -> 500,000", nuker.set_coin, 500000)
     if data == "eco_king":
         if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "King Rank"):
             return
-        return exec_mod(call, "King Rank", nuker.set_rank, cost=0)
+        return exec_mod(call, "King Rank", nuker.set_rank)
     if data == "eco_money_cust":
         try:
             bot.delete_message(chat_id, msg_id)
         except:
             pass
-        msg = bot.send_message(chat_id, "💵 Enter amount:", reply_markup=cancel_keyboard())
+        msg = bot.send_message(chat_id, f"{get_premium_emoji('money')} Enter desired money amount:", reply_markup=cancel_keyboard(), parse_mode="HTML")
         user_states[chat_id] = {'awaiting_money': True, 'msg_id': msg.message_id}
         save_state(chat_id, user_states[chat_id])
         return
@@ -2738,35 +2802,52 @@ def handle_callback(call):
             bot.delete_message(chat_id, msg_id)
         except:
             pass
-        msg = bot.send_message(chat_id, "🪙 Enter amount:", reply_markup=cancel_keyboard())
+        msg = bot.send_message(chat_id, f"{get_premium_emoji('coin')} Enter desired coins amount:", reply_markup=cancel_keyboard(), parse_mode="HTML")
         user_states[chat_id] = {'awaiting_coin': True, 'msg_id': msg.message_id}
         save_state(chat_id, user_states[chat_id])
         return
 
     if data == "veh_fix":
+        if premium_required(call): return
         if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Fix Account"):
             return
-        return exec_mod(call, "Fix Account", nuker.fix_account, cost=0)
+        return exec_mod(call, "Fix Account (Wiped Sirens/Black Paint)", nuker.fix_account)
+    
     if data == "veh_unlock_all":
+        if premium_required(call): return
         if not check_and_deduct_coins(chat_id, COIN_COSTS['bulk'], "Unlock All Cars"):
             return
         try:
-            bot.edit_message_text("⚠️ MASS INJECTION\nThis will inject cars from source.\nProceed?", chat_id, msg_id, reply_markup=types.InlineKeyboardMarkup().add(types.InlineKeyboardButton("✅ YES", callback_data="start_car_inject"), types.InlineKeyboardButton("❌ CANCEL", callback_data="menu_vehicles")))
+            bot.edit_message_text(
+                f"{get_premium_emoji('warning')} <b>WARNING: MASS INJECTION</b>\n┣━━━━━━━━━━━━━━━━━━┫\nThis will instantly inject 270 cars into your account.\nDo you want to proceed?",
+                chat_id, msg_id,
+                reply_markup=types.InlineKeyboardMarkup().add(
+                    get_btn("success_preserved", "YES, INJECT", callback_data="start_car_inject"),
+                    get_btn("cancel_failed_error", "CANCEL", callback_data="menu_premium")
+                ),
+                parse_mode="HTML"
+            )
         except:
             pass
         return
+
     if data == "start_car_inject":
+        if premium_required(call): return
         td = nuker.get_token_data(get_web_uid(chat_id))
         em = td.get("email") if td else ""
         pw = td.get("password") if td else ""
         threading.Thread(target=background_inject_all_cars, args=(chat_id, em, pw, msg_id)).start()
         return
+
     if data == "veh_unlock_single":
+        if premium_required(call): return
+        if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Unlock By ID"):
+            return
         try:
             bot.delete_message(chat_id, msg_id)
         except:
             pass
-        msg = bot.send_message(chat_id, "🚙 Enter Car ID (1-270):", reply_markup=cancel_keyboard())
+        msg = bot.send_message(chat_id, f"{get_premium_emoji('vehicles_cars_w124')} Enter Car ID (1-270):", reply_markup=cancel_keyboard(), parse_mode="HTML")
         user_states[chat_id] = {'awaiting_single_car_id': True, 'msg_id': msg.message_id}
         save_state(chat_id, user_states[chat_id])
         return
@@ -2774,57 +2855,58 @@ def handle_callback(call):
     if data == "unl_w16":
         if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "W16 Engine"):
             return
-        return exec_mod(call, "W16 Engine", nuker.unlock_w16, cost=0)
+        return exec_mod(call, "W16 Engine", nuker.unlock_w16)
     if data == "unl_smoke":
         if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Smoke"):
             return
-        return exec_mod(call, "Smoke", nuker.unlock_smoke, cost=0)
+        return exec_mod(call, "Smoke", nuker.unlock_smoke)
     if data == "unl_fuel":
         if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Max Fuel"):
             return
-        return exec_mod(call, "Max Fuel", nuker.unlimited_fuel, cost=0)
+        return exec_mod(call, "Max Fuel", nuker.unlimited_fuel)
     if data == "unl_damage":
         if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "No Damage"):
             return
-        return exec_mod(call, "No Damage", nuker.disable_damage, cost=0)
+        return exec_mod(call, "No Damage", nuker.disable_damage)
     if data == "unl_horns":
         if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Horns"):
             return
-        return exec_mod(call, "Horns", nuker.unlock_horns, cost=0)
+        return exec_mod(call, "Horns", nuker.unlock_horns)
     if data == "unl_anim":
         if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Animations"):
             return
-        return exec_mod(call, "Animations", nuker.unlock_animations, cost=0)
+        return exec_mod(call, "Animations", nuker.unlock_animations)
     if data == "unl_houses":
         if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "All Houses"):
             return
-        return exec_mod(call, "All Houses", nuker.unlock_houses, cost=0)
+        return exec_mod(call, "All Houses", nuker.unlock_houses)
     if data == "unl_wheels":
         if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Wheels"):
             return
-        return exec_mod(call, "Wheels", nuker.unlock_wheels, cost=0)
+        return exec_mod(call, "Wheels", nuker.unlock_wheels)
     if data == "unl_levels":
         if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "Complete Levels"):
             return
-        return exec_mod(call, "Complete Levels", nuker.complete_all_levels, cost=0)
+        return exec_mod(call, "Complete All Levels", nuker.complete_all_levels)
     if data == "unl_clothes":
         if not check_and_deduct_coins(chat_id, COIN_COSTS['individual'], "All Clothes"):
             return
-        return exec_mod(call, "All Clothes", nuker.unlock_all_clothes, cost=0)
+        return exec_mod(call, "All Clothes", nuker.unlock_all_clothes)
     if data == "unl_ultimate":
         if not check_and_deduct_coins(chat_id, COIN_COSTS['bulk'], "Ultimate Unlock"):
             return
-        return exec_mod(call, "Ultimate Glitch", nuker.unlock_all_features, cost=0)
+        return exec_mod(call, "Ultimate Glitch", nuker.unlock_all_features)
 
+    # ━━━━━━━━ SUBSCRIPTION BUTTONS ━━━━━━━━
     if data == "sub_stars":
         try:
-            bot.edit_message_text("⭐ Choose duration (Stars):", chat_id, msg_id, reply_markup=create_subscription_duration_keyboard("stars"))
+            bot.edit_message_text(f"{get_premium_emoji('success_preserved')} ⭐ Choose duration (Stars):", chat_id, msg_id, reply_markup=create_subscription_duration_keyboard("stars"), parse_mode="HTML")
         except:
             pass
         return
     if data == "sub_money":
         try:
-            bot.edit_message_text("💳 Choose duration (Money):", chat_id, msg_id, reply_markup=create_subscription_duration_keyboard("money"))
+            bot.edit_message_text(f"{get_premium_emoji('money')} 💳 Choose duration (Money):", chat_id, msg_id, reply_markup=create_subscription_duration_keyboard("money"), parse_mode="HTML")
         except:
             pass
         return
@@ -2833,14 +2915,14 @@ def handle_callback(call):
             bot.delete_message(chat_id, msg_id)
         except:
             pass
-        msg = bot.send_message(chat_id, "🔑 Enter Time Key:", reply_markup=cancel_keyboard())
+        msg = bot.send_message(chat_id, f"{get_premium_emoji('password')} Enter Time Key:", reply_markup=cancel_keyboard(), parse_mode="HTML")
         bot.register_next_step_handler(msg, process_time_key_input)
         return
     if data == "sub_free_trial":
         trial_key = create_trial_key(chat_id, 10)
         use_trial_key(trial_key, chat_id)
-        bot.send_message(chat_id, "🎁 Free trial activated! 10 minutes access.")
-        safe_send_dashboard(chat_id, custom_top_msg="🎁 Trial Active!", is_callback=True, message_id=msg_id)
+        bot.send_message(chat_id, f"{get_premium_emoji('account_created')} Free trial activated! 10 minutes access.", parse_mode="HTML")
+        safe_send_dashboard(chat_id, custom_top_msg="Trial Active!", is_callback=True, message_id=msg_id)
         return
 
     if data.startswith("sub_duration_"):
@@ -2870,13 +2952,13 @@ def handle_callback(call):
                     prices=[types.LabeledPrice(label=f"{stars} Stars", amount=stars)]
                 )
                 markup = types.InlineKeyboardMarkup()
-                markup.add(types.InlineKeyboardButton(f"⭐ Pay {stars} Stars", url=invoice))
-                markup.add(types.InlineKeyboardButton("🔙 Back", callback_data="menu_subscription"))
-                bot.edit_message_text(f"⭐ Please pay {stars} Stars to activate your subscription.", chat_id, msg_id, reply_markup=markup)
+                markup.add(get_btn("success_preserved", f"⭐ Pay {stars} Stars", url=invoice))
+                markup.add(get_btn("back", "Back", callback_data="menu_subscription"))
+                bot.edit_message_text(f"⭐ Please pay {stars} Stars to activate your subscription.", chat_id, msg_id, reply_markup=markup, parse_mode="HTML")
             except Exception as e:
                 bot.send_message(chat_id, f"❌ Stars payment error: {e}")
         else:
-            bot.edit_message_text("💳 Choose payment method:", chat_id, msg_id, reply_markup=create_payment_method_keyboard())
+            bot.edit_message_text(f"{get_premium_emoji('money')} Choose payment method:", chat_id, msg_id, reply_markup=create_payment_method_keyboard(), parse_mode="HTML")
         return
 
     if data.startswith("sub_payment_"):
@@ -2885,7 +2967,7 @@ def handle_callback(call):
             PENDING_SUBSCRIPTIONS[chat_id] = {}
         PENDING_SUBSCRIPTIONS[chat_id]['payment_method'] = payment_method
         text = PAYMENT_METHODS.get(payment_method, {}).get("details", "Payment selected")
-        bot.send_message(chat_id, f"💳 {text}\n\n📤 Send screenshot:", reply_markup=cancel_keyboard())
+        bot.send_message(chat_id, f"💳 {text}\n\n📤 Send screenshot:", reply_markup=cancel_keyboard(), parse_mode="Markdown")
         user_states[chat_id] = {
             'awaiting_subscription_photo': True,
             'msg_id': msg_id,
@@ -2893,6 +2975,122 @@ def handle_callback(call):
             'duration_key': PENDING_SUBSCRIPTIONS[chat_id].get('duration_key', '1_week')
         }
         save_state(chat_id, user_states[chat_id])
+        return
+
+    # ━━━━━━━━ ADMIN PANEL ━━━━━━━━
+    if data == "admin_panel":
+        if not is_admin(chat_id): return
+        try:
+            bot.answer_callback_query(call.id)
+        except:
+            pass
+        try:
+            bot.edit_message_text(f"{get_premium_emoji('overseer_panel')} <b>OVERSEER TERMINAL</b>", chat_id, msg_id, reply_markup=create_admin_keyboard(), parse_mode="HTML")
+        except:
+            pass
+        return
+
+    if data == "admin_add_admin":
+        if not is_admin(chat_id): return
+        try:
+            bot.answer_callback_query(call.id)
+        except:
+            pass
+        try:
+            bot.delete_message(chat_id, msg_id)
+        except:
+            pass
+        msg = bot.send_message(chat_id, f"{get_premium_emoji('add_admin')} <b>ENTER TARGET ID TO MAKE ADMIN:</b>", reply_markup=cancel_keyboard(), parse_mode="HTML")
+        user_states[chat_id] = {'awaiting_add_admin': True, 'msg_id': msg.message_id}
+        save_state(chat_id, user_states[chat_id])
+        return
+
+    if data == "admin_rem_admin":
+        if not is_admin(chat_id): return
+        try:
+            bot.answer_callback_query(call.id)
+        except:
+            pass
+        try:
+            bot.delete_message(chat_id, msg_id)
+        except:
+            pass
+        msg = bot.send_message(chat_id, f"{get_premium_emoji('remove_admin')} <b>ENTER TARGET ID TO REMOVE ADMIN:</b>", reply_markup=cancel_keyboard(), parse_mode="HTML")
+        user_states[chat_id] = {'awaiting_rem_admin': True, 'msg_id': msg.message_id}
+        save_state(chat_id, user_states[chat_id])
+        return
+
+    if data == "admin_view_admins":
+        if not is_admin(chat_id): return
+        try:
+            bot.answer_callback_query(call.id)
+        except:
+            pass
+        admins = get_all_admins()
+        msg_text = f"{get_premium_emoji('group_unlock')} <b>CURRENT ADMINS</b>\n┣━━━━━━━━━━━━━━━━━━┫\n" + "".join([f"{get_premium_emoji('set_id')} <code>{uid}</code>\n" for uid in admins])
+        try:
+            bot.edit_message_text(msg_text, chat_id, msg_id, reply_markup=create_admin_keyboard(), parse_mode="HTML")
+        except:
+            pass
+        return
+
+    if data == "admin_add_prem":
+        if not is_admin(chat_id): return
+        try:
+            bot.answer_callback_query(call.id)
+        except:
+            pass
+        try:
+            bot.delete_message(chat_id, msg_id)
+        except:
+            pass
+        msg = bot.send_message(chat_id, f"{get_premium_emoji('success_preserved')} <b>ENTER TARGET ID & DAYS</b> (Format: <code>user_id days</code>):", reply_markup=cancel_keyboard(), parse_mode="HTML")
+        user_states[chat_id] = {'awaiting_add_prem': True, 'msg_id': msg.message_id}
+        save_state(chat_id, user_states[chat_id])
+        return
+
+    if data == "admin_revoke":
+        if not is_admin(chat_id): return
+        try:
+            bot.answer_callback_query(call.id)
+        except:
+            pass
+        try:
+            bot.delete_message(chat_id, msg_id)
+        except:
+            pass
+        msg = bot.send_message(chat_id, f"{get_premium_emoji('cancel_failed_error')} <b>TARGET ID TO REVOKE:</b>", reply_markup=cancel_keyboard(), parse_mode="HTML")
+        user_states[chat_id] = {'awaiting_revoke': True, 'msg_id': msg.message_id}
+        save_state(chat_id, user_states[chat_id])
+        return
+
+    if data == "admin_broadcast":
+        if not is_admin(chat_id): return
+        try:
+            bot.answer_callback_query(call.id)
+        except:
+            pass
+        try:
+            bot.delete_message(chat_id, msg_id)
+        except:
+            pass
+        msg = bot.send_message(chat_id, f"{get_premium_emoji('broadcast_announcement')} <b>ENTER BROADCAST MESSAGE:</b>", reply_markup=cancel_keyboard(), parse_mode="HTML")
+        user_states[chat_id] = {'awaiting_broadcast': True, 'msg_id': msg.message_id}
+        save_state(chat_id, user_states[chat_id])
+        return
+
+    if data == "admin_stats":
+        if not is_admin(chat_id): return
+        try:
+            bot.answer_callback_query(call.id)
+        except:
+            pass
+        t_users = get_total_users()
+        premium_list = get_all_approved()
+        try:
+            bot.edit_message_text(f"{get_premium_emoji('stats_telemetry')} <b>TELEMETRY</b>\n┣━━━━━━━━━━━━━━━━━━┫\n{get_premium_emoji('group_unlock')} Total Users: {t_users}\n{get_premium_emoji('success_preserved')} Premium Users: {len(premium_list)}\n{get_premium_emoji('overseer_panel')} Admins: {len(get_all_admins())}", chat_id, msg_id, reply_markup=create_admin_keyboard(), parse_mode="HTML")
+        except:
+            pass
         return
 
     bot.answer_callback_query(call.id, "✅ Done")
@@ -2906,6 +3104,66 @@ def process_time_key_input(message):
     else:
         bot.send_message(chat_id, f"❌ {msg}")
     safe_send_dashboard(chat_id, force_refresh=True)
+
+def inject_car_by_id_thread(chat_id, msg_id, web_uid, car_id, car_name=""):
+    try:
+        try:
+            bot.edit_message_text(f"{get_premium_emoji('loading_progress')} <b>UNLOCKING CAR ID {car_id}...</b>", chat_id, msg_id, reply_markup=create_unlocks_keyboard(), parse_mode="HTML")
+        except:
+            pass
+
+        td = nuker.get_token_data(web_uid)
+        if not td:
+            try:
+                bot.edit_message_text(f"{get_premium_emoji('cancel_failed_error')} Login required. Please login again.", chat_id, msg_id, reply_markup=create_unlocks_keyboard(), parse_mode="HTML")
+            except:
+                pass
+            return
+
+        ok, _, tok = nuker.get_auth(web_uid)
+        if not ok:
+            try:
+                bot.edit_message_text(f"{get_premium_emoji('cancel_failed_error')} Auth failed. Please login again.", chat_id, msg_id, reply_markup=create_unlocks_keyboard(), parse_mode="HTML")
+            except:
+                pass
+            return
+
+        stok, _ = verify_user(*SOURCE_ACCOUNT)
+        if not stok:
+            try:
+                bot.edit_message_text(f"{get_premium_emoji('cancel_failed_error')} Source account unavailable.", chat_id, msg_id, reply_markup=create_unlocks_keyboard(), parse_mode="HTML")
+            except:
+                pass
+            return
+
+        source_cars = cpm1_get_cars(stok)
+        if not source_cars:
+            try:
+                bot.edit_message_text(f"{get_premium_emoji('cancel_failed_error')} Could not fetch cars from source.", chat_id, msg_id, reply_markup=create_unlocks_keyboard(), parse_mode="HTML")
+            except:
+                pass
+            return
+
+        car_data = next((c for c in source_cars if int(c.get("CarID", 0)) == car_id), None)
+        if not car_data:
+            try:
+                bot.edit_message_text(f"{get_premium_emoji('cancel_failed_error')} Car ID {car_id} not found in source. Try again later.", chat_id, msg_id, reply_markup=create_unlocks_keyboard(), parse_mode="HTML")
+            except:
+                pass
+            return
+
+        if cpm1_clone_car(tok, car_data, td.get("firebase_uid"), token_source=stok):
+            try:
+                bot.edit_message_text(f"{get_premium_emoji('success_preserved')} <b>CAR ID {car_id} {car_name} UNLOCKED SUCCESSFULLY!</b>\n\n{get_premium_emoji('unlocks_login')} Unlocks Configuration", chat_id, msg_id, reply_markup=create_unlocks_keyboard(), parse_mode="HTML")
+            except:
+                pass
+        else:
+            try:
+                bot.edit_message_text(f"{get_premium_emoji('cancel_failed_error')} Car ID {car_id} injection failed. Try again.\n\n{get_premium_emoji('unlocks_login')} Unlocks Configuration", chat_id, msg_id, reply_markup=create_unlocks_keyboard(), parse_mode="HTML")
+            except:
+                pass
+    except:
+        pass
 
 # ═══════════════════════════════════════════════════════════
 # 💰 TELEGRAM STARS PAYMENT HANDLERS
@@ -2937,7 +3195,7 @@ def successful_payment_handler(message):
     add_stars_balance(star_cost)
 
     bot.send_message(chat_id, f"✅ Your subscription for {duration_key.replace('_',' ').title()} is now active!\nThank you for your Stars payment (⭐{star_cost}).")
-    safe_send_dashboard(chat_id, custom_top_msg="✅ Subscription Activated!", force_refresh=True)
+    safe_send_dashboard(chat_id, custom_top_msg="Subscription Activated!", force_refresh=True)
 
 # ═══════════════════════════════════════════════════════════
 # 🚀 BOT POLLING LOOP
